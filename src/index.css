@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  
+  body {
+    background-color: #050507;
+    color: #F8FAFC;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom Smooth Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #050507;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e1e24;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #06B6D4;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(17, 17, 22, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .glass-card {
+    background: rgba(17, 17, 22, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    background: rgba(23, 23, 30, 0.85);
+    border-color: rgba(6, 182, 212, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+  }
+
+  .text-glow-violet {
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  }
+
+  .border-glow-cyan {
+    box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
+  }
+
+  .border-glow-violet {
+    box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.35);
+  }
+
+  .font-display {
+    font-family: 'Outfit', 'Syne', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}
+
+/* Pure-CSS Hardware Accelerated Splash Keyframes (60fps) */
+@keyframes splashFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0) scale(1.02);
+  }
+}
+
+@keyframes eqDance {
+  0%, 100% {
+    height: 4px;
+    opacity: 0.5;
+  }
+  50% {
+    height: 20px;
+    opacity: 1;
+  }
+}
+
+@keyframes textShimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-splash-float {
+  will-change: transform;
+  animation: splashFloat 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.animate-text-shimmer {
+  background-size: 200% auto;
+  animation: textShimmer 4s linear infinite;
+}
+
+/* Custom styled range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  height: 4px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #06B6D4;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #22D3EE;
+}

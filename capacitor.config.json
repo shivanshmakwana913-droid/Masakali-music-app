@@ -1,0 +1,9 @@
+{
+  "appId": "com.masakali.music",
+  "appName": "Masakali",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

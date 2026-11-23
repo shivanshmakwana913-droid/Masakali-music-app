@@ -1,0 +1,28 @@
+{
+  "id": "/",
+  "name": "Masakali - Free Your Music",
+  "short_name": "Masakali",
+  "description": "Free Your Music. Fly Without Ads. Ultra-lightweight ad-free music player with 10-Band EQ, Slowed+Reverb, 8D Spatial Audio, and Live Karaoke vocal remover under 1MB.",
+  "start_url": "/?standalone=true",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "orientation": "portrait",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "categories": ["music", "entertainment", "audio"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
