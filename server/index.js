@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dns from 'node:dns';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { Innertube, UniversalCache } from 'youtubei.js';
@@ -10,7 +11,16 @@ import { Ytdl } from '@distube/ytdl-core';
 // Resolve static dist directory for unified standalone 24/7 serving
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distPath = path.resolve(__dirname, '../dist');
+
+// Robust multi-path dist resolver (handles root execution, server cwd, and nested bridges)
+let distPath = path.resolve(__dirname, '../dist');
+if (!fs.existsSync(distPath)) {
+  if (fs.existsSync(path.resolve(__dirname, '../../dist'))) {
+    distPath = path.resolve(__dirname, '../../dist');
+  } else if (fs.existsSync(path.resolve(process.cwd(), 'dist'))) {
+    distPath = path.resolve(process.cwd(), 'dist');
+  }
+}
 
 // Force IPv4 lookup first to prevent connect timeout errors on Windows
 try {
@@ -1066,10 +1076,28 @@ app.get('*', (req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n======================================================`);
   console.log(`🕊️ Masakali Backend running on http://localhost:${PORT}`);
+  console.log(`📁 Static Assets Serving: ${distPath}`);
   console.log(`📡 Real Music Search:   GET http://localhost:${PORT}/api/search?q=...`);
   console.log(`🔥 Trending Songs:      GET http://localhost:${PORT}/api/trending`);
   console.log(`✨ Smart Auto-Play:     GET http://localhost:${PORT}/api/related?videoId=...`);
   console.log(`🎧 206 Partial Stream:  GET http://localhost:${PORT}/api/stream/:videoId`);
   console.log(`🎤 Real Synced Lyrics:  GET http://localhost:${PORT}/api/lyrics?track=...&artist=...`);
   console.log(`======================================================\n`);
+
+  // 24/7 Keep-Alive self-ping for free tier clouds (Render, Railway, Koyeb)
+  const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
+  if (externalUrl) {
+    const pingUrl = `${externalUrl.replace(/\/+$/, '')}/api/health`;
+    console.log(`⏱️ Initializing 24/7 Keep-Alive self-ping: ${pingUrl} (every 10 minutes)`);
+    setInterval(async () => {
+      try {
+        const pingRes = await fetch(pingUrl);
+        if (pingRes.ok) {
+          console.log(`💚 [24/7 Keep-Alive] Ping OK at ${new Date().toLocaleTimeString()}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ [24/7 Keep-Alive] Ping warning: ${err.message}`);
+      }
+    }, 10 * 60 * 1000); // 10 minutes interval to prevent Render free-tier sleep
+  }
 });

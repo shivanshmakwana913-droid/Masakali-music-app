@@ -1,0 +1,5 @@
+{
+  "name": "masakali-server-bridge",
+  "type": "module",
+  "main": "index.js"
+}
