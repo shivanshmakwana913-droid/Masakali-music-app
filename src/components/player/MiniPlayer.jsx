@@ -4,7 +4,8 @@ import {
   Volume2, VolumeX, Mic2, Sliders, Heart, ListMusic, Moon, Maximize2, MoreVertical, Radio, Loader2 
 } from 'lucide-react';
 import TrackActionSheet from './TrackActionSheet';
-import { getHighResThumbnail, handleCoverImageError, FALLBACK_COVER_SVG } from '../../services/musicApi';
+import { useTheme } from '../../context/ThemeContext';
+import { getHighResThumbnail, FALLBACK_COVER_SVG } from '../../services/musicApi';
 
 export default function MiniPlayer({
   engine,
@@ -20,6 +21,7 @@ export default function MiniPlayer({
   onShareApp,
   onOpenSupport
 }) {
+  const { isDark } = useTheme();
   const {
     currentTrack,
     isPlaying,
@@ -55,13 +57,13 @@ export default function MiniPlayer({
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
   const seekbarRef = useRef(null);
 
-  // Default Initial State: shows "Masakali • Free Your Music" with soft-blurred dove artwork if no track is active
+  // Default Initial State: shows "Masakali • Free Your Music" with dove artwork if no track is active
   const displayTrack = currentTrack || {
     id: 'masakali-init',
     title: 'Masakali',
     artist: 'Free Your Music',
-    album: 'Pure Sound • Ad-Free',
-    cover: FALLBACK_COVER_SVG,
+    album: 'Pure Sound • Minimal',
+    cover: '/logo.png',
     duration: 180
   };
 
@@ -101,9 +103,9 @@ export default function MiniPlayer({
       const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       setHoverPosition(ratio * 100);
       setHoverTime(ratio * effectiveDuration);
-    }
-    if (isDragging) {
-      handleSeekByPointer(e.clientX);
+      if (isDragging) {
+        setDragPercent(ratio * 100);
+      }
     }
   };
 
@@ -119,22 +121,28 @@ export default function MiniPlayer({
 
   return (
     <>
-      <footer className="fixed bottom-0 left-0 right-0 z-50 h-20 bg-[#0B0B10]/95 backdrop-blur-2xl border-t border-white/[0.08] px-3 sm:px-6 flex items-center justify-between select-none shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+      <footer className={`fixed bottom-0 left-0 right-0 z-50 h-20 backdrop-blur-2xl border-t px-3 sm:px-6 flex items-center justify-between select-none shadow-lg transition-colors duration-200 ${
+        isDark ? 'bg-[#0A0A0A]/95 border-zinc-800 text-white' : 'bg-white/95 border-zinc-200 text-zinc-950'
+      }`}>
         
         {/* 1. Left: Track Info & Like Toggle (Click to open Full Screen) */}
         <div className="flex items-center gap-3 sm:gap-4 w-1/4 min-w-[140px] sm:min-w-[210px]">
-          {/* Cover Art with subtle glow & tap to expand */}
+          {/* Cover Art with subtle border & tap to expand */}
           <div 
             onClick={onOpenFullScreen}
-            className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow-[0_0_12px_rgba(6,182,212,0.25)] cursor-pointer group bg-black flex items-center justify-center"
+            className={`relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border cursor-pointer group flex items-center justify-center transition-colors ${
+              isDark ? 'bg-black border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+            }`}
             title="Open Full-Screen Player"
           >
             {(!displayTrack.cover || displayTrack.cover === '/logo.png' || displayTrack.cover === FALLBACK_COVER_SVG || displayTrack.id === 'masakali-init' || String(displayTrack.cover).includes('track-')) ? (
-              <div className="w-full h-full p-2 flex items-center justify-center bg-gradient-to-tr from-[#050507] via-[#0B0B14] to-[#050507]">
+              <div className={`w-full h-full p-2 flex items-center justify-center ${
+                isDark ? 'bg-black' : 'bg-zinc-100'
+              }`}>
                 <img
                   src="/logo.png"
                   alt="Masakali"
-                  className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
+                  className="w-full h-full object-contain"
                 />
               </div>
             ) : (
@@ -144,9 +152,9 @@ export default function MiniPlayer({
                 onError={(e) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = '/logo.png';
-                  e.currentTarget.className = 'w-full h-full object-contain p-2 bg-gradient-to-tr from-[#050507] via-[#0B0B14] to-[#050507] drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]';
+                  e.currentTarget.className = 'w-full h-full object-contain p-2 bg-black';
                 }}
-                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${
+                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
                   isPlaying ? 'scale-105' : 'scale-100'
                 }`}
               />
@@ -162,33 +170,30 @@ export default function MiniPlayer({
             className="min-w-0 flex-1 cursor-pointer"
             title="Open Full-Screen Player"
           >
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs sm:text-sm font-bold text-white truncate hover:text-cyan-300 transition-colors">
+            <div className="flex items-center gap-1.5">
+              <h4 className={`text-xs sm:text-sm font-bold truncate transition-colors ${
+                isDark ? 'text-white hover:text-zinc-300' : 'text-zinc-950 hover:text-zinc-700'
+              }`}>
                 {displayTrack.title}
               </h4>
               {isSlowedReverb && (
-                <span className="hidden lg:inline text-[9px] font-medium px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                <span className={`hidden lg:inline text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                  isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-200 border-zinc-300 text-zinc-700'
+                }`}>
                   Slowed
                 </span>
               )}
-              {playbackSpeed !== 1.0 && !isSlowedReverb && (
-                <span className="hidden lg:inline text-[9px] font-medium px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  {playbackSpeed}x
-                </span>
-              )}
               {is8DActive && (
-                <span className="hidden lg:inline text-[9px] font-medium px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className={`hidden lg:inline text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                  isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-200 border-zinc-300 text-zinc-700'
+                }`}>
                   8D
                 </span>
               )}
-              {sleepTimerRemaining && (
-                <span className="hidden xl:inline-flex items-center gap-1 text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Moon className="w-2.5 h-2.5" />
-                  <span>{Math.ceil(sleepTimerRemaining / 60)}m</span>
-                </span>
-              )}
             </div>
-            <p className="text-[11px] sm:text-xs text-zinc-400 truncate mt-0.5">
+            <p className={`text-[11px] sm:text-xs truncate mt-0.5 ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}>
               {displayTrack.artist}
             </p>
           </div>
@@ -196,12 +201,16 @@ export default function MiniPlayer({
           {/* Heart Like Button */}
           <button
             onClick={() => currentTrack && onToggleLike(currentTrack.id)}
-            className="p-2 rounded-full hover:bg-white/[0.08] transition-all active:scale-125"
+            className={`p-2 rounded-full transition-all active:scale-125 ${
+              isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
+            }`}
             title={isLiked ? "Unlike Song" : "Like Song"}
           >
             <Heart
               className={`w-4 h-4 transition-transform ${
-                isLiked ? 'fill-cyan-400 text-cyan-400' : 'text-zinc-400 hover:text-white'
+                isLiked 
+                  ? 'fill-rose-500 text-rose-500' 
+                  : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
               }`}
             />
           </button>
@@ -209,7 +218,9 @@ export default function MiniPlayer({
           {/* 3-Dot Options Button */}
           <button
             onClick={() => currentTrack && setIsActionSheetOpen(true)}
-            className="p-2 rounded-full hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-500 hover:text-black'
+            }`}
             title="More Options"
           >
             <MoreVertical className="w-4 h-4" />
@@ -224,38 +235,49 @@ export default function MiniPlayer({
             <button
               onClick={toggleShuffle}
               className={`p-1.5 text-xs rounded transition-colors hidden sm:inline ${
-                isShuffle ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'
+                isShuffle 
+                  ? isDark ? 'text-white' : 'text-black' 
+                  : isDark ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-black'
               }`}
               title={isShuffle ? "Shuffle On" : "Shuffle Off"}
             >
-              <Shuffle className="w-4 h-4" />
+              <Shuffle className={`w-4 h-4 ${isShuffle ? 'stroke-[2.5]' : ''}`} />
             </button>
 
             <button
               onClick={prevTrack}
-              className="text-zinc-300 hover:text-white transition-colors p-1"
+              className={`transition-colors p-1 ${
+                isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
+              }`}
               title="Previous Track"
             >
               <SkipBack className="w-5 h-5" />
             </button>
 
+            {/* Crisp Minimal B&W Play/Pause Button */}
             <button
               onClick={togglePlay}
-              className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 flex items-center justify-center text-black font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_18px_rgba(6,182,212,0.4)]"
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold hover:scale-105 active:scale-95 transition-all shadow-md ${
+                isDark
+                  ? 'bg-white text-black hover:bg-zinc-200'
+                  : 'bg-black text-white hover:bg-zinc-800'
+              }`}
               title={isBuffering && isPlaying ? "Buffering..." : isPlaying ? "Pause" : "Play"}
             >
               {isBuffering && isPlaying ? (
-                <Loader2 className="w-5 h-5 text-black animate-spin" />
+                <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-black' : 'text-white'}`} />
               ) : isPlaying ? (
-                <Pause className="w-5 h-5 fill-black" />
+                <Pause className={`w-5 h-5 ${isDark ? 'fill-black' : 'fill-white'}`} />
               ) : (
-                <Play className="w-5 h-5 fill-black translate-x-0.5" />
+                <Play className={`w-5 h-5 translate-x-0.5 ${isDark ? 'fill-black' : 'fill-white'}`} />
               )}
             </button>
 
             <button
               onClick={nextTrack}
-              className="text-zinc-300 hover:text-white transition-colors p-1"
+              className={`transition-colors p-1 ${
+                isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
+              }`}
               title="Next Track"
             >
               <SkipForward className="w-5 h-5" />
@@ -264,20 +286,24 @@ export default function MiniPlayer({
             <button
               onClick={cycleRepeat}
               className={`p-1.5 text-xs rounded transition-colors hidden sm:inline ${
-                repeatMode !== 'off' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'
+                repeatMode !== 'off'
+                  ? isDark ? 'text-white' : 'text-black'
+                  : isDark ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-black'
               }`}
               title={`Repeat: ${repeatMode}`}
             >
-              {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+              {repeatMode === 'one' ? <Repeat1 className="w-4 h-4 stroke-[2.5]" /> : <Repeat className={`w-4 h-4 ${repeatMode !== 'off' ? 'stroke-[2.5]' : ''}`} />}
             </button>
           </div>
 
-          {/* Interactive Seek Bar (Isolated with accurate BoundingClientRect coordinate math) */}
+          {/* Interactive Seek Bar */}
           <div 
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            className="w-full flex items-center gap-2 text-[10px] sm:text-xs font-mono text-zinc-400"
+            className={`w-full flex items-center gap-2 text-[10px] sm:text-xs font-mono ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}
           >
             <span className="w-9 text-right shrink-0">
               {formatTime(isDragging ? (dragPercent / 100) * effectiveDuration : currentTime)}
@@ -294,23 +320,32 @@ export default function MiniPlayer({
             >
               {hoverTime !== null && !isDragging && (
                 <div 
-                  className="absolute -top-7 -translate-x-1/2 px-1.5 py-0.5 rounded bg-pitch-deep text-[9px] font-mono text-cyan-300 border border-white/10 shadow-lg pointer-events-none"
+                  className={`absolute -top-7 -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-mono border shadow-md pointer-events-none ${
+                    isDark ? 'bg-black text-white border-zinc-700' : 'bg-white text-black border-zinc-300'
+                  }`}
                   style={{ left: `${hoverPosition}%` }}
                 >
                   {formatTime(hoverTime)}
                 </div>
               )}
 
-              <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden pointer-events-none">
+              {/* Progress Track */}
+              <div className={`w-full h-1.5 rounded-full overflow-hidden pointer-events-none ${
+                isDark ? 'bg-zinc-800' : 'bg-zinc-200'
+              }`}>
                 <div
-                  className="h-full bg-gradient-to-r from-cyan-400 to-violet-400 rounded-full group-hover:from-cyan-300 group-hover:to-violet-300 transition-all pointer-events-none"
+                  className={`h-full rounded-full transition-all pointer-events-none ${
+                    isDark ? 'bg-white' : 'bg-black'
+                  }`}
                   style={{ width: `${displayPercent}%` }}
                 />
               </div>
 
-              {/* Glowing scrubber thumb indicator on hover/drag */}
+              {/* Minimal Scrubber thumb indicator on hover/drag */}
               <div 
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_10px_rgba(6,182,212,0.8)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border ${
+                  isDark ? 'bg-white border-zinc-300' : 'bg-black border-zinc-800'
+                }`}
                 style={{ left: `${displayPercent}%`, opacity: isDragging ? 1 : undefined }}
               />
             </div>
@@ -328,13 +363,17 @@ export default function MiniPlayer({
             onClick={toggleAutoPlayRadio}
             className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
               autoPlayRadio
-                ? 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
-                : 'bg-white/[0.03] border-white/[0.06] text-zinc-500 hover:text-zinc-300'
+                ? isDark 
+                  ? 'bg-zinc-800 text-white border-zinc-600' 
+                  : 'bg-zinc-200 text-black border-zinc-300'
+                : isDark 
+                  ? 'bg-zinc-900/60 border-zinc-800 text-zinc-500 hover:text-zinc-300' 
+                  : 'bg-zinc-100 border-zinc-200 text-zinc-500 hover:text-zinc-700'
             }`}
             title="Continuous Smart Auto-Mix: automatically queues matching tracks"
           >
-            <Radio className={`w-3.5 h-3.5 ${autoPlayRadio ? 'text-cyan-400 animate-pulse' : 'text-zinc-500'}`} />
-            <span className="text-[11px] font-mono">∞ Auto-Mix: {autoPlayRadio ? 'ON' : 'OFF'}</span>
+            <Radio className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-mono">Auto-Mix: {autoPlayRadio ? 'ON' : 'OFF'}</span>
           </button>
 
           {/* Play Queue Toggle */}
@@ -346,14 +385,20 @@ export default function MiniPlayer({
             }}
             className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-1 transition-all relative ${
               isQueueOpen
-                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400'
-                : 'bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white hover:bg-white/[0.06]'
+                ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
+                : isDark 
+                  ? 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:bg-zinc-800' 
+                  : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black hover:bg-zinc-200'
             }`}
             title="Play Queue"
           >
-            <ListMusic className="w-4 h-4 text-cyan-400" />
+            <ListMusic className="w-4 h-4" />
             {queue.length > 0 && (
-              <span className="w-4 h-4 bg-cyan-400 text-black text-[9px] font-extrabold rounded-full flex items-center justify-center">
+              <span className={`w-4 h-4 text-[9px] font-extrabold rounded-full flex items-center justify-center border ${
+                isQueueOpen
+                  ? isDark ? 'bg-black text-white border-black' : 'bg-white text-black border-white'
+                  : isDark ? 'bg-white text-black border-zinc-300' : 'bg-black text-white border-zinc-700'
+              }`}>
                 {queue.length}
               </span>
             )}
@@ -368,12 +413,14 @@ export default function MiniPlayer({
             }}
             className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
               isLyricsOpen
-                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400'
-                : 'bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white hover:bg-white/[0.06]'
+                ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
+                : isDark 
+                  ? 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:bg-zinc-800' 
+                  : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black hover:bg-zinc-200'
             }`}
             title="Lyrics"
           >
-            <Mic2 className="w-4 h-4 text-cyan-400" />
+            <Mic2 className="w-4 h-4" />
             <span className="hidden xl:inline">Lyrics</span>
           </button>
 
@@ -386,29 +433,37 @@ export default function MiniPlayer({
             }}
             className={`p-2.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all ${
               isStudioOpen
-                ? 'bg-violet-500/20 text-violet-200 border-violet-400'
-                : 'bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-white hover:bg-white/[0.06]'
+                ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
+                : isDark 
+                  ? 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:bg-zinc-800' 
+                  : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black hover:bg-zinc-200'
             }`}
             title="Equalizer & Sound Effects"
           >
-            <Sliders className="w-4 h-4 text-violet-400" />
+            <Sliders className="w-4 h-4" />
             <span className="hidden xl:inline">Studio</span>
           </button>
 
           {/* Full-Screen Player Button */}
           <button
             onClick={onOpenFullScreen}
-            className="p-2.5 rounded-xl bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:text-white hover:bg-white/[0.06] transition-colors"
+            className={`p-2.5 rounded-xl border transition-colors ${
+              isDark 
+                ? 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:bg-zinc-800' 
+                : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black hover:bg-zinc-200'
+            }`}
             title="Expand to Full Screen"
           >
-            <Maximize2 className="w-4 h-4 text-zinc-300" />
+            <Maximize2 className="w-4 h-4" />
           </button>
 
           {/* Volume Slider & Mute (Desktop) */}
-          <div className="hidden 2xl:flex items-center gap-2 pl-2 border-l border-white/[0.08]">
+          <div className={`hidden 2xl:flex items-center gap-2 pl-2 border-l ${
+            isDark ? 'border-zinc-800 text-zinc-400' : 'border-zinc-200 text-zinc-600'
+          }`}>
             <button
               onClick={toggleMute}
-              className="text-zinc-400 hover:text-white transition-colors"
+              className={`transition-colors ${isDark ? 'hover:text-white' : 'hover:text-black'}`}
               title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
@@ -421,7 +476,7 @@ export default function MiniPlayer({
               step="0.01"
               value={isMuted ? 0 : volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-20 cursor-pointer accent-cyan-400"
+              className={`w-20 cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
             />
           </div>
 

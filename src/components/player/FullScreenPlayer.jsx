@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ChevronDown, Heart, Play, Pause, SkipBack, SkipForward, 
   Shuffle, Repeat, Repeat1, Volume2, VolumeX, Mic2, Sliders, 
-  Disc3, Waves, Radio, Moon, FastForward, Clock, Activity, 
-  MoreVertical, Scissors, Camera, Sparkles, Search, Loader2 
+  Disc3, Waves, Radio, FastForward, 
+  MoreVertical, Scissors, Camera, Search, Loader2 
 } from 'lucide-react';
 import { EQ_FREQUENCIES, EQ_PRESETS } from '../../hooks/useAudioEngine';
 import { fetchLyrics, getHighResThumbnail, handleCoverImageError } from '../../services/musicApi';
+import { useTheme } from '../../context/ThemeContext';
 import TrackActionSheet from './TrackActionSheet';
 
 export default function FullScreenPlayer({
@@ -22,6 +23,8 @@ export default function FullScreenPlayer({
   onOpenSupport,
   onOpenSearch
 }) {
+  const { isDark } = useTheme();
+
   const {
     currentTrack,
     isPlaying,
@@ -193,8 +196,13 @@ export default function FullScreenPlayer({
       for (let i = 0; i < bufferLength; i++) {
         const barHeight = (dataArray[i] / 255) * height * 0.9;
         const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
-        gradient.addColorStop(0, '#06B6D4');
-        gradient.addColorStop(1, '#8B5CF6');
+        if (isDark) {
+          gradient.addColorStop(0, '#FFFFFF');
+          gradient.addColorStop(1, '#52525B');
+        } else {
+          gradient.addColorStop(0, '#09090B');
+          gradient.addColorStop(1, '#A1A1AA');
+        }
         ctx.fillStyle = gradient;
         ctx.fillRect(x, height - barHeight, barWidth - 2, barHeight);
         x += barWidth;
@@ -206,47 +214,61 @@ export default function FullScreenPlayer({
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [isOpen, activeTab, analyserNode, isPlaying]);
+  }, [isOpen, activeTab, analyserNode, isPlaying, isDark]);
 
   if (!isOpen || !currentTrack) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#050507] text-white flex flex-col justify-between overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-8">
+    <div className={`fixed inset-0 z-50 flex flex-col justify-between overflow-hidden transition-colors duration-300 animate-in fade-in slide-in-from-bottom-8 ${
+      isDark ? 'bg-black text-white' : 'bg-white text-zinc-950'
+    }`}>
       
-      {/* Dynamic Ambient Background Glow */}
+      {/* Subtle Monochrome Vignette Background */}
       <div 
-        className="absolute inset-0 pointer-events-none transition-all duration-1000 -z-10 opacity-70"
+        className="absolute inset-0 pointer-events-none transition-all duration-700 -z-10"
         style={{
-          background: `radial-gradient(circle at 50% 30%, ${ambientGlow?.primary || 'rgba(6,182,212,0.2)'} 0%, ${ambientGlow?.secondary || 'rgba(139,92,246,0.15)'} 50%, #050507 90%)`
+          background: isDark
+            ? 'radial-gradient(circle at 50% 25%, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.6) 70%, #000000 100%)'
+            : 'radial-gradient(circle at 50% 25%, rgba(0,0,0,0.02) 0%, rgba(255,255,255,0.6) 70%, #FFFFFF 100%)'
         }}
       />
 
       {/* 1. Top Header Bar */}
-      <header className="px-4 sm:px-6 py-4 flex items-center justify-between border-b border-white/[0.06] backdrop-blur-md bg-black/20 shrink-0">
+      <header className={`px-4 sm:px-6 py-4 flex items-center justify-between border-b backdrop-blur-md shrink-0 transition-colors ${
+        isDark ? 'border-zinc-800/80 bg-black/40' : 'border-zinc-200/80 bg-white/60'
+      }`}>
         
         {/* Left: Minimize Arrow */}
         <button
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-all active:scale-95"
+          className={`p-2 rounded-full transition-all active:scale-95 ${
+            isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+          }`}
           title="Minimize to mini player"
         >
           <ChevronDown className="w-6 h-6" />
         </button>
 
-        {/* View Switcher Tabs (Cover, Lyrics, Studio) */}
-        <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-full border border-white/10">
+        {/* View Switcher Tabs (Art, Lyrics, Studio) */}
+        <div className={`flex items-center gap-1 p-1 rounded-full border transition-colors ${
+          isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+        }`}>
           <button
             onClick={() => setActiveTab('cover')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-              activeTab === 'cover' ? 'bg-cyan-500 text-black shadow-md' : 'text-zinc-400 hover:text-white'
+            className={`px-3.5 py-1 rounded-full text-xs font-bold transition-all ${
+              activeTab === 'cover'
+                ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
             }`}
           >
             Art
           </button>
           <button
             onClick={() => setActiveTab('lyrics')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
-              activeTab === 'lyrics' ? 'bg-cyan-500 text-black shadow-md' : 'text-zinc-400 hover:text-white'
+            className={`px-3.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${
+              activeTab === 'lyrics'
+                ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
             }`}
           >
             <Mic2 className="w-3 h-3" />
@@ -254,8 +276,10 @@ export default function FullScreenPlayer({
           </button>
           <button
             onClick={() => setActiveTab('studio')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
-              activeTab === 'studio' ? 'bg-violet-500 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+            className={`px-3.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${
+              activeTab === 'studio'
+                ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
             }`}
           >
             <Sliders className="w-3 h-3" />
@@ -270,7 +294,9 @@ export default function FullScreenPlayer({
               onClose();
               if (onOpenSearch) onOpenSearch();
             }}
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-300 hover:text-cyan-400 transition-all active:scale-95"
+            className={`p-2 rounded-full transition-all active:scale-95 ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+            }`}
             title="Search Next Song"
           >
             <Search className="w-5 h-5" />
@@ -278,7 +304,9 @@ export default function FullScreenPlayer({
 
           <button
             onClick={() => setIsActionSheetOpen(true)}
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-all active:scale-95"
+            className={`p-2 rounded-full transition-all active:scale-95 ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+            }`}
             title="Track Options"
           >
             <MoreVertical className="w-6 h-6" />
@@ -294,7 +322,9 @@ export default function FullScreenPlayer({
         {activeTab === 'cover' && (
           <div className="w-full max-w-sm sm:max-w-md flex flex-col items-center text-center space-y-6 my-auto">
             {/* Album Cover Art */}
-            <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
+            <div className={`relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-2xl border transition-all ${
+              isDark ? 'border-zinc-800' : 'border-zinc-200 shadow-zinc-200'
+            }`}>
               <img
                 src={getHighResThumbnail(currentTrack.cover, currentTrack.id)}
                 alt={currentTrack.title}
@@ -308,13 +338,17 @@ export default function FullScreenPlayer({
               )}
             </div>
 
-            {/* Song Title & Artist with Like & 3-Dot Options */}
+            {/* Song Title & Artist with Like */}
             <div className="w-full flex items-center justify-between px-2">
               <div className="text-left min-w-0 flex-1 pr-4">
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white truncate">
+                <h2 className={`text-xl sm:text-2xl font-black truncate ${
+                  isDark ? 'text-white' : 'text-zinc-950'
+                }`}>
                   {currentTrack.title}
                 </h2>
-                <p className="text-sm sm:text-base text-zinc-400 truncate mt-1">
+                <p className={`text-sm sm:text-base truncate mt-1 ${
+                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                }`}>
                   {currentTrack.artist}
                 </p>
               </div>
@@ -322,11 +356,16 @@ export default function FullScreenPlayer({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => onToggleLike(currentTrack.id)}
-                  className="p-3 rounded-full hover:bg-white/10 transition-transform active:scale-125"
+                  className={`p-3 rounded-full transition-transform active:scale-125 ${
+                    isDark ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
+                  }`}
+                  title={isLiked ? "Unlike" : "Like"}
                 >
                   <Heart
-                    className={`w-7 h-7 ${
-                      isLiked ? 'fill-cyan-400 text-cyan-400' : 'text-zinc-400 hover:text-white'
+                    className={`w-7 h-7 transition-colors ${
+                      isLiked 
+                        ? isDark ? 'fill-white text-white' : 'fill-black text-black' 
+                        : isDark ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-black'
                     }`}
                   />
                 </button>
@@ -340,13 +379,15 @@ export default function FullScreenPlayer({
           <div className="w-full max-w-xl h-full flex flex-col py-4">
             
             {/* Quick Karaoke & Story Card Top Bar */}
-            <div className="flex items-center justify-between pb-3 px-2 border-b border-white/[0.06] text-xs">
+            <div className={`flex items-center justify-between pb-3 px-2 border-b text-xs ${
+              isDark ? 'border-zinc-800' : 'border-zinc-200'
+            }`}>
               <button
                 onClick={toggleKaraoke}
-                className={`px-3 py-1.5 rounded-xl font-semibold border flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-bold border flex items-center gap-1.5 transition-all ${
                   isKaraokeMode
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.4)]'
-                    : 'bg-white/[0.04] text-zinc-300 border-white/10 hover:text-white'
+                    ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
+                    : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
                 }`}
                 title="Toggle Live Vocal Remover"
               >
@@ -357,7 +398,9 @@ export default function FullScreenPlayer({
               {onOpenLyricCard && (
                 <button
                   onClick={() => onOpenLyricCard(activeLyricIndex >= 0 ? activeLyricIndex : 0)}
-                  className="px-3 py-1.5 rounded-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-500 text-black flex items-center gap-1.5 shadow hover:scale-105 active:scale-95 transition-all"
+                  className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all ${
+                    isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                  }`}
                   title="Generate 9:16 Story Card for WhatsApp & Instagram"
                 >
                   <Camera className="w-3.5 h-3.5" />
@@ -368,7 +411,7 @@ export default function FullScreenPlayer({
 
             <div className="flex-1 overflow-y-auto py-6 space-y-6 text-center scroll-smooth px-2">
               {lyricsList.length === 0 ? (
-                <div className="py-20 text-zinc-500 text-sm">
+                <div className={`py-20 text-sm ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
                   Searching for synced lyrics...
                 </div>
               ) : (
@@ -381,8 +424,12 @@ export default function FullScreenPlayer({
                         onClick={() => seek(line.time)}
                         className={`cursor-pointer transition-all duration-300 leading-relaxed ${
                           isActive
-                            ? 'text-2xl sm:text-3xl font-black bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent scale-105 drop-shadow-[0_0_20px_rgba(6,182,212,0.5)]'
-                            : 'text-base sm:text-lg text-zinc-500 hover:text-zinc-300 font-medium'
+                            ? isDark
+                              ? 'text-2xl sm:text-3xl font-black text-white scale-105 drop-shadow'
+                              : 'text-2xl sm:text-3xl font-black text-black scale-105'
+                            : isDark
+                              ? 'text-base sm:text-lg text-zinc-500 hover:text-zinc-300 font-medium'
+                              : 'text-base sm:text-lg text-zinc-400 hover:text-zinc-600 font-medium'
                         }`}
                       >
                         {line.text}
@@ -394,7 +441,9 @@ export default function FullScreenPlayer({
                             e.stopPropagation();
                             onOpenLyricCard(idx);
                           }}
-                          className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 text-zinc-600 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className={`absolute right-0 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity ${
+                            isDark ? 'text-zinc-500 hover:text-white' : 'text-zinc-400 hover:text-black'
+                          }`}
                           title="Generate story card from this line"
                         >
                           <Camera className="w-4 h-4" />
@@ -413,8 +462,15 @@ export default function FullScreenPlayer({
           <div className="w-full max-w-lg space-y-5 my-auto py-2">
             
             {/* Visualizer */}
-            <div className="p-3 rounded-2xl bg-pitch-deep/90 border border-white/[0.06]">
-              <canvas ref={canvasRef} width={400} height={60} className="w-full h-14 rounded-lg bg-[#050507]" />
+            <div className={`p-3 rounded-2xl border ${
+              isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+            }`}>
+              <canvas 
+                ref={canvasRef} 
+                width={400} 
+                height={60} 
+                className={`w-full h-14 rounded-lg ${isDark ? 'bg-black' : 'bg-white'}`} 
+              />
             </div>
 
             {/* EQ Presets */}
@@ -425,8 +481,8 @@ export default function FullScreenPlayer({
                   onClick={() => applyPreset(pName)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                     activePreset === pName
-                      ? 'bg-cyan-500 text-black border-cyan-400'
-                      : 'bg-white/[0.04] text-zinc-400 border-white/[0.06] hover:text-white'
+                      ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                      : isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black'
                   }`}
                 >
                   {pName}
@@ -434,15 +490,17 @@ export default function FullScreenPlayer({
               ))}
             </div>
 
-            {/* 10-Band EQ Horizontal Sliders Grid */}
-            <div className="p-4 rounded-2xl bg-pitch-deep/90 border border-white/[0.06]">
+            {/* 10-Band EQ Sliders Grid */}
+            <div className={`p-4 rounded-2xl border ${
+              isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+            }`}>
               <div className="grid grid-cols-10 gap-1 sm:gap-2 items-center">
                 {EQ_FREQUENCIES.map((freq, idx) => {
                   const gain = eqGains[idx] || 0;
                   const label = freq >= 1000 ? `${freq / 1000}k` : `${freq}`;
                   return (
                     <div key={freq} className="flex flex-col items-center gap-1.5">
-                      <span className="text-[9px] font-mono text-zinc-400">{gain > 0 ? `+${gain}` : gain}</span>
+                      <span className={`text-[9px] font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{gain > 0 ? `+${gain}` : gain}</span>
                       <div className="h-24 flex items-center justify-center">
                         <input
                           type="range"
@@ -451,10 +509,10 @@ export default function FullScreenPlayer({
                           step="1"
                           value={gain}
                           onChange={(e) => setEqBand(idx, parseFloat(e.target.value))}
-                          className="w-20 -rotate-90 cursor-pointer accent-cyan-400"
+                          className={`w-20 -rotate-90 cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
                         />
                       </div>
-                      <span className="text-[9px] font-mono font-medium text-zinc-400">{label}</span>
+                      <span className={`text-[9px] font-mono font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>{label}</span>
                     </div>
                   );
                 })}
@@ -466,38 +524,46 @@ export default function FullScreenPlayer({
               <button
                 onClick={toggleKaraoke}
                 className={`p-3 rounded-2xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 text-center transition-all ${
-                  isKaraokeMode ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400' : 'bg-white/[0.04] text-zinc-400 border-white/[0.06]'
+                  isKaraokeMode
+                    ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                    : isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black'
                 }`}
               >
-                <Mic2 className="w-4 h-4 text-emerald-400" />
+                <Mic2 className="w-4 h-4" />
                 <span>Karaoke Mode</span>
               </button>
 
               <button
                 onClick={toggleSlowedReverb}
                 className={`p-3 rounded-2xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 text-center transition-all ${
-                  isSlowedReverb ? 'bg-violet-500/20 text-violet-200 border-violet-400' : 'bg-white/[0.04] text-zinc-400 border-white/[0.06]'
+                  isSlowedReverb
+                    ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                    : isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black'
                 }`}
               >
-                <Waves className="w-4 h-4 text-violet-400" />
+                <Waves className="w-4 h-4" />
                 <span>Slowed + Reverb</span>
               </button>
 
               <button
                 onClick={toggle8D}
                 className={`p-3 rounded-2xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 text-center transition-all ${
-                  is8DActive ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400' : 'bg-white/[0.04] text-zinc-400 border-white/[0.06]'
+                  is8DActive
+                    ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                    : isDark ? 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:text-black'
                 }`}
               >
-                <Radio className="w-4 h-4 text-cyan-400" />
+                <Radio className="w-4 h-4" />
                 <span>8D Spatial</span>
               </button>
             </div>
 
             {/* Playback Speed Slider */}
-            <div className="p-3.5 rounded-2xl bg-pitch-deep/90 border border-white/[0.06] flex items-center justify-between gap-4 text-xs">
-              <span className="text-zinc-400 font-semibold flex items-center gap-1.5">
-                <FastForward className="w-4 h-4 text-cyan-400" /> Speed
+            <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-4 text-xs ${
+              isDark ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+            }`}>
+              <span className="font-semibold flex items-center gap-1.5">
+                <FastForward className="w-4 h-4" /> Speed
               </span>
               <input
                 type="range"
@@ -506,22 +572,26 @@ export default function FullScreenPlayer({
                 step="0.05"
                 value={playbackSpeed}
                 onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
-                className="flex-1 cursor-pointer accent-cyan-400"
+                className={`flex-1 cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
               />
-              <span className="font-mono text-cyan-300 font-bold">{playbackSpeed.toFixed(2)}x</span>
+              <span className="font-mono font-bold">{playbackSpeed.toFixed(2)}x</span>
             </div>
 
             {/* 1-Tap Ringtone Clipper Card in Studio */}
             {onOpenClipper && (
               <button
                 onClick={() => onOpenClipper(currentTrack)}
-                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-violet-500/20 border border-cyan-400/40 text-white font-bold text-xs flex items-center justify-between hover:scale-[1.01] transition-all shadow-md"
+                className={`w-full p-3.5 rounded-2xl border font-bold text-xs flex items-center justify-between hover:scale-[1.01] transition-all shadow-sm ${
+                  isDark ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-white' : 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-900'
+                }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Scissors className="w-4 h-4 text-cyan-400" />
+                  <Scissors className="w-4 h-4" />
                   <span>Cut Ringtone / 30s Status Clip</span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-400 text-black font-extrabold">
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                  isDark ? 'bg-white text-black' : 'bg-black text-white'
+                }`}>
                   CUT 30s
                 </span>
               </button>
@@ -535,7 +605,7 @@ export default function FullScreenPlayer({
       {/* 3. Bottom Playback Controls Strip */}
       <footer className="p-6 max-w-xl mx-auto w-full space-y-4 shrink-0">
         
-        {/* Large Progress Seekbar with accurate BoundingClientRect coordinate math */}
+        {/* Large Progress Seekbar */}
         <div 
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -550,21 +620,29 @@ export default function FullScreenPlayer({
             onPointerCancel={handlePointerUp}
             className="relative w-full h-5 flex items-center cursor-pointer group touch-none"
           >
-            <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden pointer-events-none">
+            <div className={`w-full h-2 rounded-full overflow-hidden pointer-events-none ${
+              isDark ? 'bg-zinc-800' : 'bg-zinc-200'
+            }`}>
               <div
-                className="h-full bg-gradient-to-r from-cyan-400 to-violet-400 rounded-full transition-all pointer-events-none"
+                className={`h-full rounded-full transition-all pointer-events-none ${
+                  isDark ? 'bg-white' : 'bg-black'
+                }`}
                 style={{ width: `${displayPercent}%` }}
               />
             </div>
             
-            {/* Glowing scrubber thumb indicator on hover/drag */}
+            {/* Scrubber thumb indicator on hover/drag */}
             <div 
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white shadow-[0_0_12px_rgba(6,182,212,0.9)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${
+                isDark ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'bg-black shadow-[0_0_10px_rgba(0,0,0,0.5)]'
+              }`}
               style={{ left: `${displayPercent}%`, opacity: isDragging ? 1 : undefined }}
             />
           </div>
 
-          <div className="flex justify-between text-xs font-mono text-zinc-400">
+          <div className={`flex justify-between text-xs font-mono ${
+            isDark ? 'text-zinc-400' : 'text-zinc-500'
+          }`}>
             <span>{formatTime(isDragging ? (dragPercent / 100) * effectiveDuration : currentTime)}</span>
             <span>{formatTime(effectiveDuration)}</span>
           </div>
@@ -576,7 +654,9 @@ export default function FullScreenPlayer({
           <button
             onClick={toggleShuffle}
             className={`p-2 rounded-full transition-colors ${
-              isShuffle ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'
+              isShuffle 
+                ? isDark ? 'text-white font-bold' : 'text-black font-bold' 
+                : isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-700'
             }`}
             title="Shuffle"
           >
@@ -586,7 +666,9 @@ export default function FullScreenPlayer({
           {/* Previous */}
           <button
             onClick={prevTrack}
-            className="p-3 text-zinc-300 hover:text-white transition-colors"
+            className={`p-3 transition-colors ${
+              isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
+            }`}
             title="Previous"
           >
             <SkipBack className="w-7 h-7" />
@@ -595,22 +677,28 @@ export default function FullScreenPlayer({
           {/* Large Main Play/Pause Button */}
           <button
             onClick={togglePlay}
-            className="w-16 h-16 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-bold flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_25px_rgba(6,182,212,0.5)]"
+            className={`w-16 h-16 rounded-full font-bold flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md ${
+              isDark 
+                ? 'bg-white text-black hover:bg-zinc-200 shadow-zinc-900' 
+                : 'bg-black text-white hover:bg-zinc-800 shadow-zinc-300'
+            }`}
             title={isBuffering && isPlaying ? "Buffering..." : isPlaying ? "Pause" : "Play"}
           >
             {isBuffering && isPlaying ? (
-              <Loader2 className="w-8 h-8 text-black animate-spin" />
+              <Loader2 className={`w-8 h-8 animate-spin ${isDark ? 'text-black' : 'text-white'}`} />
             ) : isPlaying ? (
-              <Pause className="w-8 h-8 fill-black" />
+              <Pause className={`w-8 h-8 ${isDark ? 'fill-black' : 'fill-white'}`} />
             ) : (
-              <Play className="w-8 h-8 fill-black translate-x-0.5" />
+              <Play className={`w-8 h-8 translate-x-0.5 ${isDark ? 'fill-black' : 'fill-white'}`} />
             )}
           </button>
 
           {/* Next */}
           <button
             onClick={nextTrack}
-            className="p-3 text-zinc-300 hover:text-white transition-colors"
+            className={`p-3 transition-colors ${
+              isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
+            }`}
             title="Next"
           >
             <SkipForward className="w-7 h-7" />
@@ -620,7 +708,9 @@ export default function FullScreenPlayer({
           <button
             onClick={cycleRepeat}
             className={`p-2 rounded-full transition-colors ${
-              repeatMode !== 'off' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'
+              repeatMode !== 'off' 
+                ? isDark ? 'text-white font-bold' : 'text-black font-bold' 
+                : isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-700'
             }`}
             title={`Repeat: ${repeatMode}`}
           >
@@ -629,9 +719,11 @@ export default function FullScreenPlayer({
         </div>
 
         {/* Volume Slider Row */}
-        <div className="flex items-center justify-center gap-3 pt-2 text-zinc-400">
-          <button onClick={toggleMute} className="hover:text-white">
-            {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+        <div className={`flex items-center justify-center gap-3 pt-2 ${
+          isDark ? 'text-zinc-400' : 'text-zinc-600'
+        }`}>
+          <button onClick={toggleMute} className={isDark ? 'hover:text-white' : 'hover:text-black'}>
+            {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-red-500" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <input
             type="range"
@@ -640,7 +732,7 @@ export default function FullScreenPlayer({
             step="0.01"
             value={isMuted ? 0 : volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-40 cursor-pointer accent-cyan-400"
+            className={`w-40 cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
           />
         </div>
 

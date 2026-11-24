@@ -37,10 +37,12 @@ import LyricStatusCardModal from '../components/player/LyricStatusCardModal';
 import SupportDevModal from '../components/player/SupportDevModal';
 import ListeningStatsModal from '../components/player/ListeningStatsModal';
 import DownloadAppModal from '../components/player/DownloadAppModal';
+import SettingsDrawer from '../components/player/SettingsDrawer';
 import MasakaliLogo from '../components/common/MasakaliLogo';
 import MasakaliHeader from '../components/common/MasakaliHeader';
 import { MasakaliInlineLoader } from '../components/common/SplashLoader';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import { useTheme } from '../context/ThemeContext';
 
 const VIBE_CATEGORIES = [
   { id: 'cat-trending', name: 'Trending Hits', query: 'top hits 2024 trending', color: 'from-amber-500/20 to-orange-500/10' },
@@ -83,11 +85,13 @@ export default function PlayerApp() {
   } = engine;
 
   // Navigation & Drawer States
+  const { isDark } = useTheme();
   const [currentTab, setCurrentTab] = useState('home'); // 'home' | 'search' | 'library'
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Track 3-Dot Options Action Sheet Target
   const [actionTrack, setActionTrack] = useState(null);
@@ -469,7 +473,7 @@ export default function PlayerApp() {
     earlier: deduplicateTracks(groupedHistory.earlier)
   }), [groupedHistory]);
 
-  // Helper render track item with guaranteed unique composite key
+  // Helper render track item with clean minimalist styling
   const renderTrackItem = (track, idx, extraClass = '', prefix = 'trk') => {
     const isCurrent = currentTrack?.id === track.id;
     const isTrackLiked = likedTrackIds.includes(track.id);
@@ -482,25 +486,30 @@ export default function PlayerApp() {
           playTrack(track);
           setIsFullScreenOpen(true);
         }}
-        className={`flex items-center justify-between p-3 sm:p-3.5 hover:bg-white/[0.04] transition-colors cursor-pointer group rounded-2xl ${isCurrent ? 'bg-gradient-to-r from-cyan-500/10 via-violet-500/10 to-transparent border border-cyan-500/30' : 'border border-transparent'
-          } ${extraClass}`}
+        className={`flex items-center justify-between p-3 sm:p-3.5 transition-colors cursor-pointer group rounded-2xl border ${
+          isCurrent 
+            ? isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-zinc-100 border-zinc-300'
+            : isDark ? 'border-transparent hover:bg-zinc-900/60' : 'border-transparent hover:bg-zinc-100/80'
+        } ${extraClass}`}
       >
         {/* Left: # or Soundwave + Cover + Title */}
         <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 pr-3">
-          <div className="w-6 text-center text-xs font-mono text-zinc-500 shrink-0">
+          <div className="w-6 text-center text-xs font-mono shrink-0">
             {isCurrent && isPlaying ? (
               <div className="flex items-end justify-center gap-[2px] h-4">
-                <span className="w-1 bg-cyan-400 rounded-full h-2 animate-[wave_0.8s_ease-in-out_infinite]" />
-                <span className="w-1 bg-cyan-300 rounded-full h-4 animate-[wave_1.2s_ease-in-out_infinite_0.2s]" />
-                <span className="w-1 bg-violet-400 rounded-full h-3 animate-[wave_0.9s_ease-in-out_infinite_0.4s]" />
+                <span className={`w-1 rounded-full h-2 animate-[wave_0.8s_ease-in-out_infinite] ${isDark ? 'bg-white' : 'bg-black'}`} />
+                <span className={`w-1 rounded-full h-4 animate-[wave_1.2s_ease-in-out_infinite_0.2s] ${isDark ? 'bg-zinc-300' : 'bg-zinc-700'}`} />
+                <span className={`w-1 rounded-full h-3 animate-[wave_0.9s_ease-in-out_infinite_0.4s] ${isDark ? 'bg-zinc-400' : 'bg-zinc-500'}`} />
               </div>
             ) : (
-              <span className="group-hover:hidden">{idx + 1}</span>
+              <span className={`group-hover:hidden ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{idx + 1}</span>
             )}
-            <Play className="w-4 h-4 text-cyan-400 hidden group-hover:block mx-auto fill-cyan-400" />
+            <Play className={`w-4 h-4 hidden group-hover:block mx-auto ${isDark ? 'text-white fill-white' : 'text-black fill-black'}`} />
           </div>
 
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 border border-white/10 shadow-sm">
+          <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 border shadow-sm ${
+            isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-zinc-100'
+          }`}>
             <img
               src={getHighResThumbnail(track.cover, track.id)}
               alt={track.title}
@@ -512,29 +521,40 @@ export default function PlayerApp() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h4 className={`text-xs sm:text-sm font-bold truncate ${isCurrent ? 'text-cyan-300 font-extrabold' : 'text-white group-hover:text-cyan-200'
-                }`}>
+              <h4 className={`text-xs sm:text-sm font-bold truncate ${
+                isCurrent 
+                  ? isDark ? 'text-white font-extrabold' : 'text-black font-extrabold'
+                  : isDark ? 'text-zinc-200 group-hover:text-white' : 'text-zinc-800 group-hover:text-black'
+              }`}>
                 {track.title}
               </h4>
               {isOffline && (
-                <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                  isDark ? 'bg-zinc-800 text-zinc-300 border-zinc-700' : 'bg-zinc-200 text-zinc-700 border-zinc-300'
+                }`}>
                   SAVED
                 </span>
               )}
               {track.source === 'local' && (
-                <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  LOCAL FILE
+                <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                  isDark ? 'bg-zinc-800 text-zinc-300 border-zinc-700' : 'bg-zinc-200 text-zinc-700 border-zinc-300'
+                }`}>
+                  LOCAL
                 </span>
               )}
             </div>
-            <p className="text-[11px] sm:text-xs text-zinc-400 truncate mt-0.5">
+            <p className={`text-[11px] sm:text-xs truncate mt-0.5 ${
+              isDark ? 'text-zinc-400' : 'text-zinc-500'
+            }`}>
               {track.artist}
             </p>
           </div>
         </div>
 
         {/* Middle: Album Name */}
-        <div className="hidden md:block w-1/4 text-xs text-zinc-400 truncate pr-4">
+        <div className={`hidden md:block w-1/4 text-xs truncate pr-4 ${
+          isDark ? 'text-zinc-400' : 'text-zinc-500'
+        }`}>
           {track.album || 'Masakali'}
         </div>
 
@@ -547,12 +567,11 @@ export default function PlayerApp() {
               e.stopPropagation();
               toggleLike(track.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white"
+            className={`p-2 transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'}`}
             title="Like"
           >
             <Heart
-              className={`w-4 h-4 ${isTrackLiked ? 'fill-cyan-400 text-cyan-400' : 'text-zinc-500 hover:text-zinc-300'
-                }`}
+              className={`w-4 h-4 ${isTrackLiked ? 'fill-rose-500 text-rose-500' : 'opacity-60 hover:opacity-100'}`}
             />
           </button>
 
@@ -562,13 +581,15 @@ export default function PlayerApp() {
               e.stopPropagation();
               setActionTrack(track);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className={`p-2 transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'}`}
             title="More Options"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
 
-          <span className="text-xs font-mono text-zinc-400 w-10 text-right hidden sm:inline">
+          <span className={`text-xs font-mono w-10 text-right hidden sm:inline ${
+            isDark ? 'text-zinc-400' : 'text-zinc-500'
+          }`}>
             {track.durationFormatted}
           </span>
         </div>
@@ -577,23 +598,17 @@ export default function PlayerApp() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#050507] text-white flex flex-col overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className={`relative min-h-screen ${isDark ? 'bg-black text-white' : 'bg-white text-zinc-950'} flex flex-col overflow-x-hidden transition-colors duration-200`}>
 
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#111116] text-white text-xs font-semibold px-4 py-2.5 rounded-full border border-cyan-500/40 shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+        <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 text-xs font-semibold px-4 py-2.5 rounded-full border shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 ${
+          isDark ? 'bg-zinc-900 text-white border-zinc-700' : 'bg-white text-black border-zinc-300'
+        }`}>
+          <span className={`w-2 h-2 rounded-full ${isDark ? 'bg-white' : 'bg-black'} animate-pulse`} />
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Dynamic Ambient Background Glow */}
-      <div
-        className="fixed inset-0 pointer-events-none transition-all duration-1000 -z-10"
-        style={{
-          background: `radial-gradient(circle at 50% 15%, ${ambientGlow.primary} 0%, ${ambientGlow.secondary} 45%, #050507 90%)`
-        }}
-      />
 
       {/* Main App Layout: Left Sidebar + Central Feed */}
       <div className="flex-1 flex overflow-hidden">
@@ -608,6 +623,7 @@ export default function PlayerApp() {
           onOpenStudio={() => setIsStudioOpen(true)}
           onOpenQueue={() => setIsQueueOpen(true)}
           onOpenStats={() => setIsStatsOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           likedCount={likedTrackIds.length}
           offlineCount={cachedTrackIds.length}
           localCount={localTracks.length}
@@ -624,7 +640,9 @@ export default function PlayerApp() {
         <main className="flex-1 overflow-y-auto pb-36 md:pb-28 p-4 sm:p-6 lg:p-8 space-y-6">
 
           {/* Persistent Global Top Sticky Bar: MasakaliHeader + Search Bar */}
-          <div className="sticky top-0 z-30 -mt-2 sm:-mt-4 pt-2 sm:pt-4 pb-3 bg-[#050507]/95 backdrop-blur-2xl border-b border-white/[0.06] space-y-3">
+          <div className={`sticky top-0 z-30 -mt-2 sm:-mt-4 pt-2 sm:pt-4 pb-3 backdrop-blur-2xl border-b space-y-3 transition-colors ${
+            isDark ? 'bg-black/95 border-zinc-800/80' : 'bg-white/95 border-zinc-200'
+          }`}>
             {/* Signature Top Brand Bar (Visible on Mobile & Desktop) */}
             <MasakaliHeader
               onSearch={(text) => {
@@ -637,6 +655,7 @@ export default function PlayerApp() {
               onShareApp={handleShareApp}
               onOpenSupport={() => setIsSupportModalOpen(true)}
               onOpenDownload={handleOpenDownload}
+              onOpenSettings={() => setIsSettingsOpen(true)}
               isInstalled={isInstalled}
               showToast={engine.showToast}
             />
@@ -644,7 +663,9 @@ export default function PlayerApp() {
             {/* Global Top Search Bar */}
             <div className="flex items-center justify-between gap-3">
               <div className="relative flex-1 group">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-cyan-400 transition-colors" />
+                <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+                  isDark ? 'text-zinc-500 group-focus-within:text-white' : 'text-zinc-400 group-focus-within:text-black'
+                }`} />
                 <input
                   ref={globalSearchInputRef}
                   type="text"
@@ -660,8 +681,12 @@ export default function PlayerApp() {
                       setCurrentTab('search');
                     }
                   }}
-                  placeholder="Search songs, artists, Bollywood, Lo-Fi, 8D audio..."
-                  className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.1] border border-white/10 focus:border-cyan-400/50 text-white placeholder-zinc-500 text-xs sm:text-sm font-medium focus:outline-none transition-all shadow-inner"
+                  placeholder="Search songs, artists, albums, or vibes..."
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none transition-all ${
+                    isDark 
+                      ? 'bg-zinc-900/80 border-zinc-800 text-white placeholder-zinc-500 focus:border-zinc-500' 
+                      : 'bg-zinc-100 border-zinc-200 text-zinc-950 placeholder-zinc-400 focus:border-zinc-400'
+                  }`}
                 />
                 {searchQuery && (
                   <button
@@ -671,7 +696,9 @@ export default function PlayerApp() {
                       setSearchSuggestions([]);
                       setCorrectedSearchQuery(null);
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 transition-colors ${
+                      isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
+                    }`}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -681,14 +708,19 @@ export default function PlayerApp() {
               {/* Continuous Auto-Mix Radio Indicator Pill */}
               <button
                 onClick={toggleAutoPlayRadio}
-                className={`hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-xs font-semibold transition-all shrink-0 ${autoPlayRadio
-                    ? 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
-                    : 'bg-white/[0.04] border-white/10 text-zinc-400 hover:text-white'
-                  }`}
+                className={`hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border text-xs font-semibold transition-all shrink-0 ${
+                  autoPlayRadio
+                    ? isDark 
+                      ? 'bg-zinc-800 text-white border-zinc-600' 
+                      : 'bg-zinc-200 text-black border-zinc-300'
+                    : isDark 
+                      ? 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white' 
+                      : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-black'
+                }`}
                 title="Continuous Smart Auto-Mix: automatically queues matching tracks"
               >
-                <Radio className={`w-3.5 h-3.5 ${autoPlayRadio ? 'text-cyan-400 animate-pulse' : 'text-zinc-500'}`} />
-                <span className="font-mono">∞ Auto-Mix: {autoPlayRadio ? 'ON' : 'OFF'}</span>
+                <Radio className="w-3.5 h-3.5" />
+                <span className="font-mono">Auto-Mix: {autoPlayRadio ? 'ON' : 'OFF'}</span>
               </button>
             </div>
           </div>
@@ -702,11 +734,10 @@ export default function PlayerApp() {
               {/* Top Greeting Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-                    <span>{greeting}</span>
-                    <span className="text-lg">✨</span>
+                  <h1 className={`text-2xl sm:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                    {greeting}
                   </h1>
-                  <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                  <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                     What would you like to listen to today?
                   </p>
                 </div>
@@ -718,10 +749,11 @@ export default function PlayerApp() {
                   <button
                     key={chip}
                     onClick={() => handleHomeFilterClick(chip)}
-                    className={`px-4 py-2 rounded-full font-semibold transition-all shrink-0 ${homeFilter === chip
-                        ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                        : 'bg-white/[0.05] text-zinc-300 hover:text-white border border-white/[0.06]'
-                      }`}
+                    className={`px-4 py-2 rounded-full font-semibold transition-all shrink-0 ${
+                      homeFilter === chip
+                        ? isDark ? 'bg-white text-black font-bold shadow-sm' : 'bg-black text-white font-bold shadow-sm'
+                        : isDark ? 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white' : 'bg-zinc-100 border border-zinc-200 text-zinc-600 hover:text-black'
+                    }`}
                   >
                     {chip}
                   </button>
@@ -732,18 +764,19 @@ export default function PlayerApp() {
               {homeFilter !== 'All' && searchResults.length > 0 && (
                 <section className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h3 className={`text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
                       <span>{homeFilter} Mixes</span>
-                      <Flame className="w-4 h-4 text-cyan-400" />
                     </h3>
                     <button
                       onClick={() => setHomeFilter('All')}
-                      className="text-xs text-cyan-400 hover:underline"
+                      className={`text-xs font-semibold hover:underline ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
                     >
                       Clear Filter
                     </button>
                   </div>
-                  <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                  <div className={`rounded-2xl border overflow-hidden divide-y ${
+                    isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-850' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                  }`}>
                     {uniqueSearchResults.map((t, idx) => renderTrackItem(t, idx, '', 'filter-search'))}
                   </div>
                 </section>
@@ -753,8 +786,8 @@ export default function PlayerApp() {
               {uniqueRecentlyPlayed.length > 0 && homeFilter === 'All' && (
                 <section className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-cyan-400" />
+                    <h3 className={`text-base sm:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                      <Clock className="w-4 h-4 opacity-70" />
                       <span>Recently Played</span>
                     </h3>
                   </div>
@@ -767,7 +800,11 @@ export default function PlayerApp() {
                           playTrack(track);
                           setIsFullScreenOpen(true);
                         }}
-                        className="group p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-cyan-500/30 cursor-pointer transition-all space-y-2.5"
+                        className={`group p-3 rounded-2xl border cursor-pointer transition-all space-y-2.5 ${
+                          isDark 
+                            ? 'bg-zinc-900/60 hover:bg-zinc-850 border-zinc-800 hover:border-zinc-700' 
+                            : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200 hover:border-zinc-300'
+                        }`}
                       >
                         <div className="aspect-square w-full rounded-xl overflow-hidden relative shadow-md">
                           <img
@@ -778,16 +815,20 @@ export default function PlayerApp() {
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <div className="w-9 h-9 rounded-full bg-cyan-400 flex items-center justify-center text-black shadow-lg">
-                              <Play className="w-4 h-4 fill-black translate-x-0.5" />
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg ${
+                              isDark ? 'bg-white text-black' : 'bg-black text-white'
+                            }`}>
+                              <Play className={`w-4 h-4 translate-x-0.5 ${isDark ? 'fill-black' : 'fill-white'}`} />
                             </div>
                           </div>
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-white truncate group-hover:text-cyan-300 transition-colors">
+                          <h4 className={`text-xs font-bold truncate transition-colors ${
+                            isDark ? 'text-white group-hover:text-zinc-200' : 'text-zinc-900 group-hover:text-black'
+                          }`}>
                             {track.title}
                           </h4>
-                          <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                          <p className={`text-[11px] truncate mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                             {track.artist}
                           </p>
                         </div>
@@ -801,8 +842,8 @@ export default function PlayerApp() {
               {homeFilter === 'All' && (
                 <section className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <h3 className={`text-base sm:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                      <Disc3 className="w-4 h-4 opacity-70" />
                       <span>Mood & Vibe Mixes</span>
                     </h3>
                   </div>
@@ -812,22 +853,26 @@ export default function PlayerApp() {
                       <div
                         key={`vibe-pl-${pl.id}-${idx}`}
                         onClick={() => handlePlaylistClick(pl)}
-                        className="group relative rounded-2xl p-3 sm:p-4 glass-card cursor-pointer border border-white/[0.06] hover:border-cyan-500/30 overflow-hidden transition-all hover:-translate-y-1"
+                        className={`group relative rounded-2xl p-3 sm:p-4 cursor-pointer border overflow-hidden transition-all hover:-translate-y-1 ${
+                          isDark 
+                            ? 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700' 
+                            : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+                        }`}
                       >
-                        {/* Hardware-Accelerated Zero-Network CSS Mesh Artwork */}
+                        {/* Artwork */}
                         <div
-                          className="aspect-square w-full rounded-2xl overflow-hidden mb-3 relative shadow-lg flex flex-col justify-between p-3.5 sm:p-4 group-hover:scale-[1.03] transition-all duration-500 border border-white/10"
+                          className="aspect-square w-full rounded-2xl overflow-hidden mb-3 relative shadow-lg flex flex-col justify-between p-3.5 sm:p-4 group-hover:scale-[1.02] transition-all duration-500 border border-white/10"
                           style={{ background: pl.meshStyle }}
                         >
                           {/* Top: Icon + Vibe Badge */}
                           <div className="flex items-center justify-between z-10">
                             <div className="w-9 h-9 rounded-xl bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-md">
-                              {pl.id === 'p1' && <Moon className="w-4 h-4 text-pink-300" />}
-                              {pl.id === 'p2' && <Zap className="w-4 h-4 text-cyan-300" />}
-                              {pl.id === 'p3' && <Headphones className="w-4 h-4 text-amber-300" />}
-                              {pl.id === 'p4' && <Disc3 className="w-4 h-4 text-emerald-300" />}
+                              {pl.id === 'p1' && <Moon className="w-4 h-4 text-white" />}
+                              {pl.id === 'p2' && <Zap className="w-4 h-4 text-white" />}
+                              {pl.id === 'p3' && <Headphones className="w-4 h-4 text-white" />}
+                              {pl.id === 'p4' && <Disc3 className="w-4 h-4 text-white" />}
                             </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md border shadow-sm ${pl.accentColor}`}>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/50 text-white backdrop-blur-md border border-white/20 shadow-sm">
                               {pl.vibe}
                             </span>
                           </div>
@@ -843,7 +888,7 @@ export default function PlayerApp() {
 
                           {/* Bottom Row: Track count and Play Button */}
                           <div className="flex items-center justify-between z-10">
-                            <span className="text-[11px] font-mono font-bold text-white/90 drop-shadow">
+                            <span className="text-[11px] font-mono font-bold text-white drop-shadow">
                               {pl.tracksCount}
                             </span>
                             <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-2xl opacity-90 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0 group-hover:scale-110">
@@ -855,10 +900,12 @@ export default function PlayerApp() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                         </div>
 
-                        <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-cyan-300 transition-colors truncate">
+                        <h4 className={`text-xs sm:text-sm font-bold truncate transition-colors ${
+                          isDark ? 'text-white' : 'text-zinc-950'
+                        }`}>
                           {pl.title}
                         </h4>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                        <p className={`text-[11px] mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                           {pl.tracksCount} curated tracks
                         </p>
                       </div>
@@ -872,11 +919,11 @@ export default function PlayerApp() {
                 <section className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                        <Flame className="w-4 h-4 text-cyan-400" />
+                      <h3 className={`text-base sm:text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                        <Flame className="w-4 h-4 opacity-70" />
                         <span>Trending Now</span>
                       </h3>
-                      <p className="text-xs text-zinc-400">
+                      <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                         Top played worldwide right now
                       </p>
                     </div>
@@ -884,15 +931,19 @@ export default function PlayerApp() {
                     {(trendingTracks.length > 0 || tracks.length > 0) && (
                       <button
                         onClick={() => playTrack((trendingTracks.length > 0 ? trendingTracks : tracks)[0])}
-                        className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-bold text-xs hover:scale-105 transition-transform flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                        className={`px-4 py-2 rounded-full font-bold text-xs hover:scale-105 transition-transform flex items-center gap-1.5 shadow-sm ${
+                          isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                        }`}
                       >
-                        <Play className="w-3.5 h-3.5 fill-black" />
+                        <Play className={`w-3.5 h-3.5 ${isDark ? 'fill-black' : 'fill-white'}`} />
                         <span>Play All</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                  <div className={`rounded-2xl border overflow-hidden divide-y ${
+                    isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-850' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                  }`}>
                     {uniqueTrendingTracks.slice(0, 10).map((t, idx) =>
                       renderTrackItem(t, idx, '', 'trending')
                     )}
@@ -912,14 +963,20 @@ export default function PlayerApp() {
               {/* Search Bar & Smart Suggestions */}
               <div className="space-y-2.5 max-w-2xl">
                 <div className="relative">
-                  <Search className="w-5 h-5 text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Search className={`w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${
+                    isDark ? 'text-zinc-500' : 'text-zinc-400'
+                  }`} />
                   <input
                     type="text"
                     autoFocus
                     placeholder={isBackendOnline ? "Search songs, artists, albums, or lyrics..." : "Search local tracks..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#111116] text-white placeholder-zinc-500 text-sm pl-11 pr-11 py-3.5 rounded-2xl border border-white/[0.1] focus:outline-none focus:border-cyan-400/80 focus:ring-1 focus:ring-cyan-400/50 shadow-xl transition-all"
+                    className={`w-full text-sm pl-11 pr-11 py-3.5 rounded-2xl border focus:outline-none transition-all shadow-sm ${
+                      isDark 
+                        ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-zinc-500' 
+                        : 'bg-zinc-100 border-zinc-200 text-zinc-950 placeholder-zinc-400 focus:border-zinc-400'
+                    }`}
                   />
                   {searchQuery && (
                     <button
@@ -928,7 +985,9 @@ export default function PlayerApp() {
                         setSearchSuggestions([]);
                         setCorrectedSearchQuery(null);
                       }}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                      className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1 transition-colors ${
+                        isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'
+                      }`}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -945,9 +1004,12 @@ export default function PlayerApp() {
                           setSearchQuery(sug);
                           setSearchSuggestions([]);
                         }}
-                        className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/[0.05] hover:bg-cyan-500/20 text-zinc-300 hover:text-cyan-200 border border-white/[0.08] hover:border-cyan-500/40 flex items-center gap-1.5 transition-all shrink-0"
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-1.5 transition-all shrink-0 ${
+                          isDark 
+                            ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' 
+                            : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200'
+                        }`}
                       >
-                        <Sparkles className="w-3 h-3 text-cyan-400" />
                         <span>{sug}</span>
                       </button>
                     ))}
@@ -956,17 +1018,18 @@ export default function PlayerApp() {
 
                 {/* Auto-Corrected Query Banner */}
                 {correctedSearchQuery && (
-                  <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs text-cyan-200 flex items-center justify-between animate-in fade-in">
+                  <div className={`p-3 rounded-xl border text-xs flex items-center justify-between animate-in fade-in ${
+                    isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200' : 'bg-zinc-100 border-zinc-300 text-zinc-800'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
                       <span>
-                        Showing songs for <strong className="text-white underline">{correctedSearchQuery}</strong>
-                        <span className="text-zinc-400 ml-1.5 hidden sm:inline">(Auto-corrected typo)</span>
+                        Showing songs for <strong className="underline">{correctedSearchQuery}</strong>
+                        <span className={`ml-1.5 hidden sm:inline ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>(Auto-corrected)</span>
                       </span>
                     </div>
                     <button
                       onClick={() => setCorrectedSearchQuery(null)}
-                      className="text-[11px] text-zinc-400 hover:text-white"
+                      className={`text-[11px] ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black'}`}
                     >
                       Dismiss
                     </button>
@@ -988,19 +1051,23 @@ export default function PlayerApp() {
               {searchQuery.trim().length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                    <h3 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                       Results for "{searchQuery}" ({searchResults.length})
                     </h3>
                   </div>
 
                   {searchResults.length === 0 && !isSearching ? (
-                    <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.06] space-y-2">
-                      <Music className="w-8 h-8 text-zinc-600 mx-auto" />
-                      <h4 className="text-sm font-bold text-zinc-300">No tracks found</h4>
-                      <p className="text-xs text-zinc-500">Try a different spelling or search for an artist</p>
+                    <div className={`p-12 text-center rounded-2xl border space-y-2 ${
+                      isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                    }`}>
+                      <Music className={`w-8 h-8 mx-auto ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`} />
+                      <h4 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>No tracks found</h4>
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Try a different spelling or search for an artist</p>
                     </div>
                   ) : (
-                    <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-850' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
                       {uniqueSearchResults.map((t, idx) => renderTrackItem(t, idx, '', 'search-res'))}
                     </div>
                   )}
@@ -1008,8 +1075,8 @@ export default function PlayerApp() {
               ) : (
                 /* Browse Genre Cards */
                 <div className="space-y-4">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-cyan-400" />
+                  <h3 className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                    <Compass className="w-4 h-4 opacity-70" />
                     <span>Browse All Genres & Moods</span>
                   </h3>
 
@@ -1018,10 +1085,14 @@ export default function PlayerApp() {
                       <button
                         key={`vibe-cat-${cat.id}-${i}`}
                         onClick={() => setSearchQuery(cat.name)}
-                        className={`p-4 rounded-2xl bg-gradient-to-br ${cat.color} border border-white/[0.08] hover:border-cyan-400/40 text-left transition-all hover:scale-[1.02] shadow-md`}
+                        className={`p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] shadow-sm ${
+                          isDark 
+                            ? 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900' 
+                            : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 hover:bg-zinc-100'
+                        }`}
                       >
-                        <h4 className="text-sm font-extrabold text-white">{cat.name}</h4>
-                        <p className="text-[11px] text-zinc-400 mt-1">Explore top hits</p>
+                        <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-zinc-950'}`}>{cat.name}</h4>
+                        <p className={`text-[11px] mt-1 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>Explore hits</p>
                       </button>
                     ))}
                   </div>
@@ -1040,11 +1111,11 @@ export default function PlayerApp() {
               {/* Library Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-black text-white flex items-center gap-2.5">
-                    <LibraryIcon className="w-6 h-6 text-cyan-400" />
+                  <h1 className={`text-2xl font-black flex items-center gap-2.5 ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                    <LibraryIcon className={`w-6 h-6 ${isDark ? 'text-zinc-200' : 'text-zinc-800'}`} />
                     <span>Your Library</span>
                   </h1>
-                  <p className="text-xs text-zinc-400 mt-0.5">
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                     Device songs, playlists, saved tracks, and listening history
                   </p>
                 </div>
@@ -1053,17 +1124,21 @@ export default function PlayerApp() {
                   {/* Listening Stats Trigger */}
                   <button
                     onClick={() => setIsStatsOpen(true)}
-                    className="px-3.5 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-sm"
+                    className={`px-3.5 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-sm ${
+                      isDark ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-white' : 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-900'
+                    }`}
                     title="View Your Music Stats & Personal Wrapped"
                   >
-                    <BarChart2 className="w-4 h-4 text-cyan-400" />
-                    <span>📊 Listening Stats</span>
+                    <BarChart2 className={`w-4 h-4 ${isDark ? 'text-white' : 'text-black'}`} />
+                    <span>Listening Stats</span>
                   </button>
 
                   {/* 1-Tap Play Local Audio Device Button */}
-                  <label className="cursor-pointer px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-violet-500/20 hover:from-cyan-500/30 hover:to-violet-500/30 border border-cyan-400/40 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:scale-[1.02] active:scale-95 transition-all">
-                    <FolderOpen className="w-4 h-4 text-cyan-400" />
-                    <span>📁 Play Local Audio</span>
+                  <label className={`cursor-pointer px-4 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-sm ${
+                    isDark ? 'bg-white hover:bg-zinc-200 text-black border-white' : 'bg-black hover:bg-zinc-800 text-white border-black'
+                  }`}>
+                    <FolderOpen className={`w-4 h-4 ${isDark ? 'text-black' : 'text-white'}`} />
+                    <span>Play Local Audio</span>
                     <input
                       type="file"
                       accept="audio/*"
@@ -1076,16 +1151,19 @@ export default function PlayerApp() {
               </div>
 
               {/* Sub-Tabs: Liked, Offline, Local Audio, History, Playlists */}
-              <div className="flex items-center gap-2 pb-1 border-b border-white/[0.06] overflow-x-auto scrollbar-none">
+              <div className={`flex items-center gap-2 pb-1 border-b overflow-x-auto scrollbar-none ${
+                isDark ? 'border-zinc-800' : 'border-zinc-200'
+              }`}>
                 <button
                   onClick={() => {
                     setLibrarySubTab('liked');
                     setActivePlaylistId(null);
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${librarySubTab === 'liked' && !activePlaylistId
-                      ? 'bg-cyan-500 text-black shadow-md'
-                      : 'bg-white/[0.04] text-zinc-400 hover:text-white'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    librarySubTab === 'liked' && !activePlaylistId
+                      ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                      : isDark ? 'bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800' : 'bg-zinc-100 text-zinc-600 hover:text-black border border-zinc-200'
+                  }`}
                 >
                   Liked Songs ({likedTrackIds.length})
                 </button>
@@ -1095,10 +1173,11 @@ export default function PlayerApp() {
                     setLibrarySubTab('offline');
                     setActivePlaylistId(null);
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${librarySubTab === 'offline' && !activePlaylistId
-                      ? 'bg-emerald-400 text-black shadow-md'
-                      : 'bg-white/[0.04] text-zinc-400 hover:text-white'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    librarySubTab === 'offline' && !activePlaylistId
+                      ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                      : isDark ? 'bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800' : 'bg-zinc-100 text-zinc-600 hover:text-black border border-zinc-200'
+                  }`}
                 >
                   Offline ({cachedTrackIds.length})
                 </button>
@@ -1108,10 +1187,11 @@ export default function PlayerApp() {
                     setLibrarySubTab('local');
                     setActivePlaylistId(null);
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${librarySubTab === 'local' && !activePlaylistId
-                      ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-black shadow-md font-extrabold'
-                      : 'bg-white/[0.04] text-zinc-400 hover:text-white'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    librarySubTab === 'local' && !activePlaylistId
+                      ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                      : isDark ? 'bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800' : 'bg-zinc-100 text-zinc-600 hover:text-black border border-zinc-200'
+                  }`}
                 >
                   Local Audio ({localTracks.length})
                 </button>
@@ -1121,20 +1201,22 @@ export default function PlayerApp() {
                     setLibrarySubTab('history');
                     setActivePlaylistId(null);
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${librarySubTab === 'history' && !activePlaylistId
-                      ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-md font-extrabold'
-                      : 'bg-white/[0.04] text-zinc-400 hover:text-white'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    librarySubTab === 'history' && !activePlaylistId
+                      ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                      : isDark ? 'bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800' : 'bg-zinc-100 text-zinc-600 hover:text-black border border-zinc-200'
+                  }`}
                 >
                   History ({listeningHistory.length})
                 </button>
 
                 <button
                   onClick={() => setLibrarySubTab('playlists')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${librarySubTab === 'playlists' || activePlaylistId
-                      ? 'bg-violet-500 text-white shadow-md'
-                      : 'bg-white/[0.04] text-zinc-400 hover:text-white'
-                    }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    librarySubTab === 'playlists' || activePlaylistId
+                      ? isDark ? 'bg-white text-black shadow-sm' : 'bg-black text-white shadow-sm'
+                      : isDark ? 'bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800' : 'bg-zinc-100 text-zinc-600 hover:text-black border border-zinc-200'
+                  }`}
                 >
                   Playlists ({customPlaylists.length})
                 </button>
@@ -1144,28 +1226,34 @@ export default function PlayerApp() {
               {librarySubTab === 'liked' && !activePlaylistId && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-zinc-300">
+                    <h3 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                       {likedTracksList.length} Liked Songs
                     </h3>
                     {likedTracksList.length > 0 && (
                       <button
                         onClick={() => playTrack(likedTracksList[0])}
-                        className="px-3.5 py-1.5 rounded-full bg-cyan-400 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                        className={`px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform ${
+                          isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                        }`}
                       >
-                        <Play className="w-3 h-3 fill-black" />
+                        <Play className={`w-3 h-3 ${isDark ? 'fill-black' : 'fill-white'}`} />
                         <span>Play All</span>
                       </button>
                     )}
                   </div>
 
                   {likedTracksList.length === 0 ? (
-                    <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.06] space-y-2">
-                      <Heart className="w-8 h-8 text-zinc-600 mx-auto" />
-                      <h4 className="text-sm font-bold text-zinc-300">No liked songs yet</h4>
-                      <p className="text-xs text-zinc-500">Tap the heart icon on any song to save it here</p>
+                    <div className={`p-12 text-center rounded-2xl border space-y-2 ${
+                      isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                    }`}>
+                      <Heart className="w-8 h-8 text-zinc-400 mx-auto" />
+                      <h4 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>No liked songs yet</h4>
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Tap the heart icon on any song to save it here</p>
                     </div>
                   ) : (
-                    <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
                       {uniqueLikedTracks.map((t, idx) => renderTrackItem(t, idx, '', 'liked'))}
                     </div>
                   )}
@@ -1176,28 +1264,34 @@ export default function PlayerApp() {
               {librarySubTab === 'offline' && !activePlaylistId && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-zinc-300">
+                    <h3 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                       {offlineTracksList.length} Downloaded Songs
                     </h3>
                     {offlineTracksList.length > 0 && (
                       <button
                         onClick={() => playTrack(offlineTracksList[0])}
-                        className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                        className={`px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform ${
+                          isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                        }`}
                       >
-                        <Play className="w-3 h-3 fill-black" />
+                        <Play className={`w-3 h-3 ${isDark ? 'fill-black' : 'fill-white'}`} />
                         <span>Play Offline</span>
                       </button>
                     )}
                   </div>
 
                   {offlineTracksList.length === 0 ? (
-                    <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.06] space-y-2">
-                      <Download className="w-8 h-8 text-zinc-600 mx-auto" />
-                      <h4 className="text-sm font-bold text-zinc-300">No offline downloads</h4>
-                      <p className="text-xs text-zinc-500">Tap the 3 dots or download icon on any song to cache it for zero-internet playback</p>
+                    <div className={`p-12 text-center rounded-2xl border space-y-2 ${
+                      isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                    }`}>
+                      <Download className="w-8 h-8 text-zinc-400 mx-auto" />
+                      <h4 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>No offline downloads</h4>
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Tap the 3 dots or download icon on any song to cache it for zero-internet playback</p>
                     </div>
                   ) : (
-                    <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
                       {uniqueOfflineTracks.map((t, idx) => renderTrackItem(t, idx, '', 'offline'))}
                     </div>
                   )}
@@ -1209,16 +1303,18 @@ export default function PlayerApp() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-zinc-300">
+                      <h3 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                         {localTracks.length} Local Audio Files
                       </h3>
-                      <p className="text-xs text-zinc-500">
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
                         Plays directly from your device with EQ, Slowed+Reverb & 8D
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <label className="cursor-pointer px-3.5 py-1.5 rounded-full bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 font-bold text-xs flex items-center gap-1.5 transition-all">
+                      <label className={`cursor-pointer px-3.5 py-1.5 rounded-full border font-bold text-xs flex items-center gap-1.5 transition-all ${
+                        isDark ? 'bg-zinc-900 hover:bg-zinc-800 text-white border-zinc-800' : 'bg-zinc-100 hover:bg-zinc-200 text-black border-zinc-200'
+                      }`}>
                         <FolderOpen className="w-3.5 h-3.5" />
                         <span>+ Add More</span>
                         <input
@@ -1233,9 +1329,11 @@ export default function PlayerApp() {
                       {localTracks.length > 0 && (
                         <button
                           onClick={() => playTrack(localTracks[0])}
-                          className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                          className={`px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform ${
+                            isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                          }`}
                         >
-                          <Play className="w-3 h-3 fill-black" />
+                          <Play className={`w-3 h-3 ${isDark ? 'fill-black' : 'fill-white'}`} />
                           <span>Play All</span>
                         </button>
                       )}
@@ -1243,16 +1341,20 @@ export default function PlayerApp() {
                   </div>
 
                   {localTracks.length === 0 ? (
-                    <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.06] space-y-3">
-                      <FolderOpen className="w-10 h-10 text-cyan-400/60 mx-auto" />
+                    <div className={`p-12 text-center rounded-2xl border space-y-3 ${
+                      isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                    }`}>
+                      <FolderOpen className={`w-10 h-10 mx-auto ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`} />
                       <div>
-                        <h4 className="text-sm font-bold text-zinc-300">No local audio loaded</h4>
-                        <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
+                        <h4 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>No local audio loaded</h4>
+                        <p className={`text-xs mt-1 max-w-sm mx-auto ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
                           Select any MP3, WAV, or M4A files on your device to play them with zero internet and live audio editing.
                         </p>
                       </div>
-                      <label className="cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-extrabold text-xs shadow-lg hover:scale-105 active:scale-95 transition-all">
-                        <FolderOpen className="w-4 h-4 fill-black" />
+                      <label className={`cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm hover:scale-105 active:scale-95 transition-all ${
+                        isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                      }`}>
+                        <FolderOpen className={`w-4 h-4 ${isDark ? 'fill-black' : 'fill-white'}`} />
                         <span>Choose Audio Files from Device</span>
                         <input
                           type="file"
@@ -1264,7 +1366,9 @@ export default function PlayerApp() {
                       </label>
                     </div>
                   ) : (
-                    <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
                       {uniqueLocalTracks.map((t, idx) => renderTrackItem(t, idx, '', 'local'))}
                     </div>
                   )}
@@ -1276,11 +1380,11 @@ export default function PlayerApp() {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-amber-400" />
+                      <h3 className={`text-sm font-bold flex items-center gap-2 ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>
+                        <Clock className="w-4 h-4" />
                         <span>Listening History ({listeningHistory.length})</span>
                       </h3>
-                      <p className="text-xs text-zinc-500">
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
                         Last 100 played songs grouped chronologically
                       </p>
                     </div>
@@ -1290,7 +1394,9 @@ export default function PlayerApp() {
                         <>
                           <button
                             onClick={handleClearHistory}
-                            className="px-3.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/[0.08] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                            className={`px-3.5 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                              isDark ? 'bg-zinc-900 hover:bg-rose-950/40 text-zinc-400 hover:text-rose-400 border-zinc-800' : 'bg-zinc-100 hover:bg-rose-50 text-zinc-600 hover:text-rose-600 border-zinc-200'
+                            }`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Clear History</span>
@@ -1298,9 +1404,11 @@ export default function PlayerApp() {
 
                           <button
                             onClick={() => playTrack(listeningHistory[0])}
-                            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                            className={`px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform ${
+                              isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                            }`}
                           >
-                            <Play className="w-3 h-3 fill-black" />
+                            <Play className={`w-3 h-3 ${isDark ? 'fill-black' : 'fill-white'}`} />
                             <span>Play All</span>
                           </button>
                         </>
@@ -1309,21 +1417,27 @@ export default function PlayerApp() {
                   </div>
 
                   {listeningHistory.length === 0 ? (
-                    <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.06] space-y-2">
-                      <Clock className="w-8 h-8 text-zinc-600 mx-auto" />
-                      <h4 className="text-sm font-bold text-zinc-300">No listening history yet</h4>
-                      <p className="text-xs text-zinc-500">Songs you stream or play from your local files will appear here automatically</p>
+                    <div className={`p-12 text-center rounded-2xl border space-y-2 ${
+                      isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+                    }`}>
+                      <Clock className="w-8 h-8 text-zinc-400 mx-auto" />
+                      <h4 className={`text-sm font-bold ${isDark ? 'text-zinc-300' : 'text-zinc-800'}`}>No listening history yet</h4>
+                      <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Songs you stream or play from your local files will appear here automatically</p>
                     </div>
                   ) : (
                     <div className="space-y-5">
                       {/* Today */}
                       {uniqueGroupedHistory.today.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2 px-1">
+                          <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 px-1 ${
+                            isDark ? 'text-white' : 'text-zinc-900'
+                          }`}>
                             <span>Today</span>
                             <span className="text-[10px] text-zinc-500 font-mono">({uniqueGroupedHistory.today.length})</span>
                           </div>
-                          <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                          <div className={`rounded-2xl border overflow-hidden divide-y ${
+                            isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                          }`}>
                             {uniqueGroupedHistory.today.map((t, idx) => renderTrackItem(t, idx, '', 'hist-today'))}
                           </div>
                         </div>
@@ -1332,11 +1446,15 @@ export default function PlayerApp() {
                       {/* Yesterday */}
                       {uniqueGroupedHistory.yesterday.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-xs font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-2 px-1">
+                          <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 px-1 ${
+                            isDark ? 'text-zinc-400' : 'text-zinc-600'
+                          }`}>
                             <span>Yesterday</span>
                             <span className="text-[10px] text-zinc-500 font-mono">({uniqueGroupedHistory.yesterday.length})</span>
                           </div>
-                          <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                          <div className={`rounded-2xl border overflow-hidden divide-y ${
+                            isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                          }`}>
                             {uniqueGroupedHistory.yesterday.map((t, idx) => renderTrackItem(t, idx, '', 'hist-yest'))}
                           </div>
                         </div>
@@ -1345,11 +1463,15 @@ export default function PlayerApp() {
                       {/* Earlier */}
                       {uniqueGroupedHistory.earlier.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-xs font-extrabold uppercase tracking-wider text-zinc-400 flex items-center gap-2 px-1">
+                          <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 px-1 ${
+                            isDark ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>
                             <span>Earlier</span>
                             <span className="text-[10px] text-zinc-500 font-mono">({uniqueGroupedHistory.earlier.length})</span>
                           </div>
-                          <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                          <div className={`rounded-2xl border overflow-hidden divide-y ${
+                            isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                          }`}>
                             {uniqueGroupedHistory.earlier.map((t, idx) => renderTrackItem(t, idx, '', 'hist-earlier'))}
                           </div>
                         </div>
@@ -1369,32 +1491,40 @@ export default function PlayerApp() {
                       <div className="flex items-center justify-between">
                         <button
                           onClick={() => setActivePlaylistId(null)}
-                          className="text-xs text-cyan-400 font-semibold hover:underline"
+                          className={`text-xs font-semibold hover:underline ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
                         >
                           ← Back to All Playlists
                         </button>
                         {activeCustomPlaylistTracks.length > 0 && (
                           <button
                             onClick={() => playTrack(activeCustomPlaylistTracks[0])}
-                            className="px-3.5 py-1.5 rounded-full bg-violet-400 text-black font-bold text-xs flex items-center gap-1.5 shadow"
+                            className={`px-3.5 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform ${
+                              isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                            }`}
                           >
-                            <Play className="w-3 h-3 fill-black" />
+                            <Play className={`w-3 h-3 ${isDark ? 'fill-black' : 'fill-white'}`} />
                             <span>Play Playlist</span>
                           </button>
                         )}
                       </div>
 
-                      <div className="p-5 rounded-2xl bg-gradient-to-r from-violet-500/20 via-cyan-500/10 to-transparent border border-white/10 space-y-1">
-                        <h2 className="text-xl font-bold text-white">{activeCustomPlaylist.title}</h2>
-                        <p className="text-xs text-zinc-400">{activeCustomPlaylistTracks.length} tracks</p>
+                      <div className={`p-5 rounded-2xl border space-y-1 ${
+                        isDark ? 'bg-zinc-900/60 border-zinc-800 text-white' : 'bg-zinc-100 border-zinc-200 text-zinc-900'
+                      }`}>
+                        <h2 className="text-xl font-bold">{activeCustomPlaylist.title}</h2>
+                        <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{activeCustomPlaylistTracks.length} tracks</p>
                       </div>
 
                       {activeCustomPlaylistTracks.length === 0 ? (
-                        <div className="p-8 text-center rounded-2xl glass-panel border border-white/[0.06] text-xs text-zinc-500">
+                        <div className={`p-8 text-center rounded-2xl border text-xs ${
+                          isDark ? 'bg-zinc-900/40 border-zinc-800 text-zinc-500' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
+                        }`}>
                           This playlist is empty. Tap the 3 dots (⋮) on any song to add it!
                         </div>
                       ) : (
-                        <div className="rounded-2xl glass-panel border border-white/[0.06] overflow-hidden divide-y divide-white/[0.04]">
+                        <div className={`rounded-2xl border overflow-hidden divide-y ${
+                          isDark ? 'bg-zinc-950/80 border-zinc-800 divide-zinc-800/60' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                        }`}>
                           {uniqueActiveCustomPlaylistTracks.map((t, idx) => renderTrackItem(t, idx, '', 'cpl-track'))}
                         </div>
                       )}
@@ -1406,14 +1536,20 @@ export default function PlayerApp() {
                         <div
                           key={`cpl-${pl.id}-${idx}`}
                           onClick={() => setActivePlaylistId(pl.id)}
-                          className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-violet-500/30 cursor-pointer transition-all space-y-3"
+                          className={`p-4 rounded-2xl border cursor-pointer transition-all space-y-3 ${
+                            isDark 
+                              ? 'bg-zinc-900/40 hover:bg-zinc-900 border-zinc-800 hover:border-zinc-700' 
+                              : 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200 hover:border-zinc-300 shadow-sm'
+                          }`}
                         >
-                          <div className="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-300 flex items-center justify-center border border-violet-500/30">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                            isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-200 border-zinc-300 text-zinc-900'
+                          }`}>
                             <Music className="w-5 h-5" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-bold text-white truncate">{pl.title}</h4>
-                            <p className="text-xs text-zinc-400 mt-0.5">{pl.trackIds?.length || 0} songs</p>
+                            <h4 className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-zinc-950'}`}>{pl.title}</h4>
+                            <p className={`text-xs mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{pl.trackIds?.length || 0} songs</p>
                           </div>
                         </div>
                       ))}
@@ -1543,6 +1679,17 @@ export default function PlayerApp() {
       <SupportDevModal
         isOpen={isSupportModalOpen}
         onClose={() => setIsSupportModalOpen(false)}
+        showToast={engine.showToast}
+      />
+
+      {/* Dedicated Settings Drawer */}
+      <SettingsDrawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenSupport={() => {
+          setIsSettingsOpen(false);
+          setIsSupportModalOpen(true);
+        }}
         showToast={engine.showToast}
       />
 

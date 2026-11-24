@@ -49,26 +49,26 @@ export default function SplashLoader({
   // COMPACT INLINE MODE (for Search, Buffering, or List loading)
   if (inline) {
     const sizeMap = {
-      sm: { ring: 'p-[1.5px] rounded-xl', logo: 'w-6 h-6 rounded-[10px]', text: 'text-xs', eqH: 'h-4', barW: 'w-0.5' },
-      md: { ring: 'p-[2px] rounded-2xl', logo: 'w-8 h-8 rounded-[14px]', text: 'text-sm', eqH: 'h-5', barW: 'w-1' },
-      lg: { ring: 'p-[2.5px] rounded-2xl', logo: 'w-12 h-12 rounded-[18px]', text: 'text-base', eqH: 'h-6', barW: 'w-1' }
+      sm: { ring: 'p-0.5 rounded-xl border border-zinc-800', logo: 'w-6 h-6 rounded-[10px]', text: 'text-xs', eqH: 'h-4', barW: 'w-0.5' },
+      md: { ring: 'p-0.5 rounded-2xl border border-zinc-800', logo: 'w-8 h-8 rounded-[14px]', text: 'text-sm', eqH: 'h-5', barW: 'w-1' },
+      lg: { ring: 'p-0.5 rounded-2xl border border-zinc-800', logo: 'w-12 h-12 rounded-[18px]', text: 'text-base', eqH: 'h-6', barW: 'w-1' }
     };
     const s = sizeMap[size] || sizeMap.md;
 
     return (
       <div className={`flex items-center gap-3 select-none ${className}`}>
-        {/* Glowing Mini Masakali Emblem */}
-        <div className={`relative ${s.ring} bg-gradient-to-tr from-cyan-400 via-violet-500 to-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.4)] shrink-0 animate-splash-float`}>
+        {/* Minimal Masakali Emblem */}
+        <div className={`relative ${s.ring} bg-zinc-900 shrink-0`}>
           <MasakaliLogo className={`${s.logo} object-cover bg-black`} />
         </div>
 
-        {/* Dancing Equalizer Bars + Status Message */}
+        {/* Minimal Equalizer Bars + Status Message */}
         <div className="flex items-center gap-2">
           <div className={`flex items-center gap-0.5 ${s.eqH}`}>
             {[0.1, 0.35, 0.0, 0.45, 0.2].map((delay, idx) => (
               <span
                 key={idx}
-                className={`${s.barW} rounded-full bg-gradient-to-t from-cyan-400 to-violet-400`}
+                className={`${s.barW} rounded-full bg-white`}
                 style={{
                   animation: 'eqDance 1.1s ease-in-out infinite',
                   animationDelay: `${delay}s`,
@@ -78,7 +78,7 @@ export default function SplashLoader({
             ))}
           </div>
           {message && (
-            <span className={`font-medium ${s.text} text-zinc-300 font-display tracking-wide`}>
+            <span className={`font-medium ${s.text} text-zinc-400 font-display tracking-wide`}>
               {message}
             </span>
           )}
@@ -87,55 +87,40 @@ export default function SplashLoader({
     );
   }
 
-  // FULL-SCREEN INITIAL SPLASH SCREEN
+  // FULL-SCREEN INITIAL SPLASH SCREEN (MINIMALIST BLACK & WHITE)
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#050507] select-none transition-opacity duration-350 ease-out ${
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black select-none transition-opacity duration-350 ease-out ${
         isFading ? 'opacity-0 pointer-events-none' : 'opacity-100'
       } ${className}`}
-      style={{
-        backgroundColor: '#050507',
-        backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.25) 0%, rgba(139, 92, 246, 0.15) 35%, transparent 70%)'
-      }}
     >
       {/* Central Content Container */}
-      <div className="flex flex-col items-center gap-7 text-center animate-in fade-in zoom-in-95 duration-500">
+      <div className="flex flex-col items-center gap-6 text-center animate-in fade-in duration-500">
         
-        {/* 1. Centerpiece Masakali Dove Logo in Glowing Halo */}
-        <div className="relative group animate-splash-float mb-1">
-          {/* Breathing Radial Halo Glow */}
-          <div className="absolute -inset-6 rounded-full bg-gradient-to-tr from-cyan-500/40 via-violet-500/30 to-cyan-400/40 blur-2xl animate-pulse pointer-events-none" />
-
-          {/* Precision Glowing Gradient Ring */}
-          <div className="relative p-[3px] rounded-[30px] bg-gradient-to-tr from-cyan-400 via-violet-500 to-cyan-300 shadow-[0_0_45px_rgba(6,182,212,0.5),0_0_90px_rgba(139,92,246,0.3)]">
+        {/* 1. Centerpiece Masakali Dove Logo */}
+        <div className="relative group mb-1">
+          <div className="p-1 rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
             <MasakaliLogo
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-[27px] object-cover bg-black"
-              fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-[27px]"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-[22px] object-cover bg-black"
+              fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-[22px]"
             />
-            {/* Emerald Online / Live Dot */}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-[3px] border-[#050507] shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-pulse" />
           </div>
         </div>
 
-        {/* 2. Stylish Animated Brand Typography */}
+        {/* 2. Minimalist Brand Typography */}
         <div className="space-y-3 flex flex-col items-center">
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-display font-black text-4xl sm:text-5xl tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent animate-text-shimmer drop-shadow-[0_0_25px_rgba(6,182,212,0.4)]">
-              Masakali
-            </h1>
-            <span className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow-[0_0_12px_rgba(52,211,153,0.4)]">
-              AD-FREE
-            </span>
-          </div>
+          <h1 className="font-display font-black text-4xl sm:text-5xl tracking-tight text-white">
+            Masakali
+          </h1>
 
           {/* 3. Mini Equalizer Soundwave & Tagline */}
           <div className="flex items-center gap-3 pt-1">
             {/* 5 Animated Equalizer Bars */}
-            <div className="flex items-center gap-1 h-6">
+            <div className="flex items-center gap-1 h-5">
               {[0.1, 0.35, 0.0, 0.45, 0.2].map((delay, idx) => (
                 <span
                   key={idx}
-                  className="w-1 rounded-full bg-gradient-to-t from-cyan-400 to-violet-400 shadow-[0_0_10px_rgba(6,182,212,0.6)]"
+                  className="w-1 rounded-full bg-white"
                   style={{
                     animation: 'eqDance 1.1s ease-in-out infinite',
                     animationDelay: `${delay}s`,
@@ -145,16 +130,16 @@ export default function SplashLoader({
               ))}
             </div>
 
-            <span className="text-xs font-bold tracking-[0.25em] uppercase text-zinc-300 font-display">
+            <span className="text-xs font-semibold tracking-widest uppercase text-zinc-400 font-display">
               {message}
             </span>
 
             {/* Mirror Equalizer Bars */}
-            <div className="flex items-center gap-1 h-6">
+            <div className="flex items-center gap-1 h-5">
               {[0.2, 0.45, 0.0, 0.35, 0.1].map((delay, idx) => (
                 <span
                   key={idx}
-                  className="w-1 rounded-full bg-gradient-to-t from-violet-400 to-cyan-400 shadow-[0_0_10px_rgba(139,92,246,0.6)]"
+                  className="w-1 rounded-full bg-zinc-500"
                   style={{
                     animation: 'eqDance 1.1s ease-in-out infinite',
                     animationDelay: `${delay}s`,
@@ -169,12 +154,12 @@ export default function SplashLoader({
       </div>
 
       {/* Subtle Bottom Credit / Version */}
-      <div className="absolute bottom-7 flex items-center gap-2 text-[10px] text-zinc-500 font-mono tracking-widest uppercase">
-        <span>PURE SOUND</span>
+      <div className="absolute bottom-7 flex items-center gap-2 text-[10px] text-zinc-600 font-mono tracking-widest uppercase">
+        <span>MINIMALIST AUDIO</span>
         <span>•</span>
         <span>ZERO ADS</span>
         <span>•</span>
-        <span>100% OFFLINE</span>
+        <span>OFFLINE</span>
       </div>
     </div>
   );

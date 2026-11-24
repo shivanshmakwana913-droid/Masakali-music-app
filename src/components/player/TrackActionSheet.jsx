@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Download, Check, ListPlus, ListMusic, Plus, 
-  FolderPlus, Moon, Sliders, Share2, Heart, Music, Scissors 
+  FolderPlus, Moon, Sliders, Share2, Heart, Scissors 
 } from 'lucide-react';
 import { getHighResThumbnail, handleCoverImageError } from '../../services/musicApi';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TrackActionSheet({
   isOpen,
@@ -17,6 +18,7 @@ export default function TrackActionSheet({
   onShareApp,
   onOpenSupport
 }) {
+  const { isDark } = useTheme();
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [customPlaylists, setCustomPlaylists] = useState([]);
@@ -121,26 +123,34 @@ export default function TrackActionSheet({
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Action Sheet Container */}
-      <div className="relative w-full sm:max-w-md bg-[#0F0F14] border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 z-10 space-y-4 max-h-[85vh] overflow-y-auto">
+      <div className={`relative w-full sm:max-w-md border rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 z-10 space-y-4 max-h-[85vh] overflow-y-auto transition-colors ${
+        isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+      }`}>
         
         {/* Top Header with Track Preview */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className={`flex items-center justify-between pb-3 border-b ${
+          isDark ? 'border-zinc-800' : 'border-zinc-200'
+        }`}>
           <div className="flex items-center gap-3 min-w-0 pr-3">
             <img 
               src={getHighResThumbnail(track.cover, track.id)} 
               alt={track.title} 
               onError={handleCoverImageError}
-              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-white/10"
+              className={`w-12 h-12 rounded-xl object-cover shrink-0 border ${
+                isDark ? 'border-zinc-800' : 'border-zinc-200'
+              }`}
             />
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-white truncate">{track.title}</h3>
-              <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+              <h3 className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-zinc-950'}`}>{track.title}</h3>
+              <p className={`text-xs truncate ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{track.artist}</p>
             </div>
           </div>
 
           <button 
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isDark ? 'hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -156,9 +166,11 @@ export default function TrackActionSheet({
                 onToggleLike(track.id);
                 engine.showToast(isLiked ? 'Removed from Liked Songs' : 'Added to Liked Songs');
               }}
-              className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-cyan-400 text-cyan-400' : 'text-zinc-400'}`} />
+              <Heart className={`w-5 h-5 ${isLiked ? (isDark ? 'fill-white text-white' : 'fill-black text-black') : 'text-zinc-400'}`} />
               <span>{isLiked ? 'Liked (In Your Library)' : 'Add to Liked Songs'}</span>
             </button>
 
@@ -171,18 +183,22 @@ export default function TrackActionSheet({
                   await engine.saveTrackOffline(track);
                 }
               }}
-              className="w-full flex items-center justify-between px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
               <div className="flex items-center gap-3.5">
                 {isOffline ? (
-                  <Check className="w-5 h-5 text-emerald-400" />
+                  <Check className="w-5 h-5 text-emerald-500" />
                 ) : (
                   <Download className="w-5 h-5 text-zinc-400" />
                 )}
                 <span>{isOffline ? 'Saved for Offline Playback' : 'Download Song Offline'}</span>
               </div>
               {isOffline && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-800'
+                }`}>
                   READY
                 </span>
               )}
@@ -191,13 +207,15 @@ export default function TrackActionSheet({
             {/* 3. Add to Playlist */}
             <button
               onClick={() => setShowPlaylistPicker(true)}
-              className="w-full flex items-center justify-between px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
               <div className="flex items-center gap-3.5">
-                <FolderPlus className="w-5 h-5 text-cyan-400" />
+                <FolderPlus className="w-5 h-5 text-zinc-400" />
                 <span>Add to Custom Playlist</span>
               </div>
-              <span className="text-xs text-zinc-500">›</span>
+              <span className="text-xs text-zinc-400">›</span>
             </button>
 
             {/* 4. Play Next */}
@@ -206,9 +224,11 @@ export default function TrackActionSheet({
                 engine.playNextInQueue(track);
                 onClose();
               }}
-              className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
-              <ListPlus className="w-5 h-5 text-cyan-400" />
+              <ListPlus className="w-5 h-5 text-zinc-400" />
               <span>Play Next</span>
             </button>
 
@@ -218,9 +238,11 @@ export default function TrackActionSheet({
                 engine.addToQueue(track);
                 onClose();
               }}
-              className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
-              <ListMusic className="w-5 h-5 text-violet-400" />
+              <ListMusic className="w-5 h-5 text-zinc-400" />
               <span>Add to Queue</span>
             </button>
 
@@ -231,20 +253,24 @@ export default function TrackActionSheet({
                   onClose();
                   onOpenClipper(track);
                 }}
-                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
               >
-                <Scissors className="w-5 h-5 text-cyan-400" />
+                <Scissors className="w-5 h-5 text-zinc-400" />
                 <span>Cut Ringtone / 30s Status Clip</span>
               </button>
             )}
 
             {/* 7. Sleep Timer Quick Options */}
-            <div className="py-2 px-3 space-y-2 border-t border-b border-white/[0.06]">
+            <div className={`py-2 px-3 space-y-2 border-t border-b ${
+              isDark ? 'border-zinc-800' : 'border-zinc-200'
+            }`}>
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
-                <Moon className="w-4 h-4 text-amber-400" />
+                <Moon className="w-4 h-4" />
                 <span>Sleep Timer:</span>
                 {engine.sleepTimerRemaining && (
-                  <span className="text-amber-300 font-mono">
+                  <span className="font-mono font-bold">
                     ({Math.ceil(engine.sleepTimerRemaining / 60)}m left)
                   </span>
                 )}
@@ -259,8 +285,8 @@ export default function TrackActionSheet({
                     }}
                     className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${
                       engine.sleepTimerSetting === mins
-                        ? 'bg-amber-400 text-black border-amber-400'
-                        : 'bg-white/[0.04] text-zinc-300 border-white/10 hover:text-white'
+                        ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                        : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
                     }`}
                   >
                     {mins}m
@@ -273,8 +299,8 @@ export default function TrackActionSheet({
                   }}
                   className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${
                     engine.sleepTimerSetting === 'end_of_track'
-                      ? 'bg-amber-400 text-black border-amber-400'
-                      : 'bg-white/[0.04] text-zinc-300 border-white/10 hover:text-white'
+                      ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                      : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
                   }`}
                 >
                   End of Track
@@ -285,7 +311,9 @@ export default function TrackActionSheet({
                       engine.clearSleepTimer();
                       engine.showToast('Sleep timer turned off');
                     }}
-                    className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30"
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border ${
+                      isDark ? 'bg-rose-950/40 text-rose-300 border-rose-900' : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}
                   >
                     Off
                   </button>
@@ -293,54 +321,62 @@ export default function TrackActionSheet({
               </div>
             </div>
 
-            {/* 7. Audio Studio Shortcut */}
+            {/* 8. Audio Studio Shortcut */}
             {onOpenStudio && (
               <button
                 onClick={() => {
                   onClose();
                   onOpenStudio();
                 }}
-                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
               >
-                <Sliders className="w-5 h-5 text-violet-400" />
+                <Sliders className="w-5 h-5 text-zinc-400" />
                 <span>Audio Studio (10-Band EQ & 8D)</span>
               </button>
             )}
 
-            {/* 8. Share Song */}
+            {/* 9. Share Song */}
             <button
               onClick={handleShare}
-              className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
             >
-              <Share2 className="w-5 h-5 text-cyan-400" />
+              <Share2 className="w-5 h-5 text-zinc-400" />
               <span>Share Song</span>
             </button>
 
-            {/* 9. Share Masakali 🕊️ App */}
+            {/* 10. Share Masakali App */}
             {onShareApp && (
               <button
                 onClick={() => {
                   onClose();
                   onShareApp();
                 }}
-                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-zinc-200"
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
               >
-                <Share2 className="w-5 h-5 text-violet-400" />
-                <span>Share Masakali 🕊️ App</span>
+                <Share2 className="w-5 h-5 text-zinc-400" />
+                <span>Share Masakali App</span>
               </button>
             )}
 
-            {/* 10. Support Developer (UPI) */}
+            {/* 11. Support Developer */}
             {onOpenSupport && (
               <button
                 onClick={() => {
                   onClose();
                   onOpenSupport();
                 }}
-                className="w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-white/[0.06] text-sm font-medium transition-colors text-rose-300"
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
               >
-                <Heart className="w-5 h-5 text-rose-400 fill-rose-500/30" />
-                <span>Support Developer (UPI)</span>
+                <Heart className="w-5 h-5 text-zinc-400" />
+                <span>Support Masakali (UPI)</span>
               </button>
             )}
 
@@ -351,11 +387,11 @@ export default function TrackActionSheet({
             <div className="flex items-center justify-between pb-1">
               <button 
                 onClick={() => setShowPlaylistPicker(false)}
-                className="text-xs text-cyan-400 font-semibold hover:underline"
+                className={`text-xs font-semibold hover:underline ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
               >
                 ← Back to options
               </button>
-              <span className="text-xs font-bold text-zinc-400">Select Playlist</span>
+              <span className={`text-xs font-bold ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>Select Playlist</span>
             </div>
 
             {/* Create New Playlist Input */}
@@ -365,11 +401,17 @@ export default function TrackActionSheet({
                 placeholder="New playlist name..."
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
-                className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-400"
+                className={`flex-1 rounded-xl px-3 py-2 text-xs border focus:outline-none transition-colors ${
+                  isDark 
+                    ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-zinc-600' 
+                    : 'bg-zinc-100 border-zinc-200 text-black placeholder-zinc-400 focus:border-zinc-400'
+                }`}
               />
               <button
                 type="submit"
-                className="px-3 py-2 bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-bold text-xs rounded-xl flex items-center gap-1 shadow-md hover:scale-105 transition-transform"
+                className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1 shadow-sm transition-transform hover:scale-105 ${
+                  isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                }`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create</span>
@@ -384,30 +426,22 @@ export default function TrackActionSheet({
                   <button
                     key={pl.id}
                     onClick={() => toggleTrackInPlaylist(pl.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-xs font-semibold ${
-                      inPlaylist 
-                        ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/50' 
-                        : 'bg-white/[0.03] text-zinc-300 border-white/[0.06] hover:bg-white/[0.06]'
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors ${
+                      inPlaylist
+                        ? isDark ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300 text-black'
+                        : isDark ? 'border-zinc-800/60 hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-600 hover:text-black'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <Music className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="truncate">{pl.title}</span>
-                      <span className="text-[10px] text-zinc-500">
-                        ({pl.trackIds?.length || 0} songs)
-                      </span>
-                    </div>
-
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                      inPlaylist ? 'bg-cyan-400 border-cyan-400 text-black' : 'border-zinc-600'
-                    }`}>
-                      {inPlaylist && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
+                    <span>{pl.title} ({pl.trackIds?.length || 0})</span>
+                    {inPlaylist ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-zinc-400" />
+                    )}
                   </button>
                 );
               })}
             </div>
-
           </div>
         )}
 

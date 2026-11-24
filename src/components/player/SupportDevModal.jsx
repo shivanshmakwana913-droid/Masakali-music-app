@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { X, Heart, Copy, Check, ExternalLink, Sparkles, Coffee, ShieldCheck } from 'lucide-react';
+import { X, Heart, Copy, Check, Coffee, ShieldCheck } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import MasakaliLogo from '../common/MasakaliLogo';
 
 export default function SupportDevModal({ isOpen, onClose, showToast }) {
+  const { isDark } = useTheme();
   const [copied, setCopied] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState('100');
 
@@ -26,63 +28,74 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
 
       {/* Backdrop tap to close */}
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-md bg-[#0F0F14] border border-white/10 rounded-3xl shadow-2xl p-6 z-10 space-y-5 text-white overflow-hidden">
-
-        {/* Glow decoration */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-gradient-to-b from-violet-500/20 to-transparent blur-2xl pointer-events-none" />
+      <div className={`relative w-full max-w-md border rounded-3xl shadow-2xl p-6 z-10 space-y-5 overflow-hidden transition-colors duration-200 ${
+        isDark ? 'bg-[#0E0E10] border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+      }`}>
 
         {/* Header */}
         <div className="flex items-start justify-between relative">
           <div className="flex items-center gap-3">
-            <MasakaliLogo className="w-11 h-11 rounded-2xl object-cover" />
+            <MasakaliLogo className="w-10 h-10 rounded-2xl object-contain bg-black border border-zinc-800" />
             <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-                <span>Keep Masakali Flying Free 🕊️</span>
-                <Sparkles className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-base sm:text-lg font-bold tracking-tight">
+                Support Masakali 🕊️
               </h3>
-              <p className="text-xs text-zinc-400">Free Your Music. Fly Without Ads. • 100% Ad-Free</p>
+              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                Free Your Music • 100% Ad-Free
+              </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+            className={`p-1.5 rounded-full transition-colors ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-500 hover:text-black'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Friendly Creator Message */}
-        <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs text-zinc-300 leading-relaxed space-y-1.5">
+        <div className={`p-3.5 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${
+          isDark ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+        }`}>
           <p>
             Hey! 👋 I built <strong>Masakali 🕊️</strong> with one pure intention: to free your music from intrusive ads, paywalls, and bloated algorithms.
           </p>
           <p>
             Enjoy studio-grade acoustics (10-Band EQ, Slowed+Reverb, 8D Spatial Audio, and Live Karaoke) in an ultra-lightweight player under 1MB.
           </p>
-          <p className="text-zinc-400 text-[11px] pt-0.5">
-            If Masakali brings peace, rhythm, or joy to your day, consider chipping in for hosting & updates so it can fly free forever for everyone! 🕊️
+          <p className={`text-[11px] pt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            If Masakali brings peace, rhythm, or joy to your day, consider chipping in for hosting & server costs so it can fly free forever for everyone!
           </p>
         </div>
 
         {/* Quick Amount Selector */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-semibold text-zinc-400 block">Choose Contribution Amount (INR):</label>
+          <label className={`text-[11px] font-semibold block ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+            Choose Contribution Amount (INR):
+          </label>
           <div className="grid grid-cols-4 gap-2">
             {['50', '100', '250', '500'].map((amt) => (
               <button
                 key={amt}
                 onClick={() => setSelectedAmount(amt)}
-                className={`py-2 rounded-xl text-xs font-bold border transition-all ${selectedAmount === amt
-                    ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-black border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
-                    : 'bg-white/[0.04] text-zinc-300 border-white/[0.08] hover:text-white hover:bg-white/[0.08]'
-                  }`}
+                className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  selectedAmount === amt
+                    ? isDark 
+                      ? 'bg-white text-black border-white shadow-sm' 
+                      : 'bg-black text-white border-black shadow-sm'
+                    : isDark 
+                      ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' 
+                      : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200'
+                }`}
               >
                 ₹{amt}
               </button>
@@ -94,32 +107,49 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
         <div className="space-y-3 pt-1">
           <a
             href={upiDeepLink}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.02] active:scale-95"
+            className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 shadow-md ${
+              isDark
+                ? 'bg-white text-black hover:bg-zinc-200'
+                : 'bg-black text-white hover:bg-zinc-800'
+            }`}
           >
-            <Coffee className="w-4 h-4 fill-black" />
-            <span>Pay ₹{selectedAmount} via UPI App (GPay / PhonePe / Paytm)</span>
-            <ExternalLink className="w-3.5 h-3.5" />
+            <Coffee className="w-4 h-4" />
+            <span>Pay ₹{selectedAmount} via UPI (GPay / PhonePe / Paytm)</span>
           </a>
 
-          {/* Copyable UPI ID Strip */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-[#09090D] border border-white/10 text-xs">
-            <div className="min-w-0 pr-2">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block font-semibold">UPI ID:</span>
-              <span className="font-mono text-cyan-300 font-bold truncate block">{upiId}</span>
+          {/* Copy UPI ID Box */}
+          <div className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${
+            isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+          }`}>
+            <div className="min-w-0 flex-1">
+              <span className={`text-[10px] font-medium block uppercase tracking-wider ${
+                isDark ? 'text-zinc-500' : 'text-zinc-400'
+              }`}>
+                Direct UPI ID
+              </span>
+              <span className="font-mono text-xs font-semibold select-all truncate block">
+                {upiId}
+              </span>
             </div>
 
             <button
               onClick={handleCopyUPI}
-              className="px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
+                copied
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : isDark
+                    ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
+                    : 'bg-zinc-200 border-zinc-300 text-zinc-800 hover:bg-zinc-300'
+              }`}
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Copied</span>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Copied!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5 text-zinc-300" />
+                  <Copy className="w-3.5 h-3.5" />
                   <span>Copy UPI</span>
                 </>
               )}
@@ -127,14 +157,15 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
           </div>
         </div>
 
-        {/* Trust Badge */}
-        <div className="pt-2 border-t border-white/[0.06] flex items-center justify-center gap-2 text-[11px] text-zinc-500">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Secure direct UPI transfer • No middleman fees</span>
+        {/* Security badge */}
+        <div className={`flex items-center justify-center gap-1.5 text-[11px] ${
+          isDark ? 'text-zinc-500' : 'text-zinc-400'
+        }`}>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Direct zero-commission creator support • 100% Secure UPI</span>
         </div>
 
       </div>
-
     </div>
   );
 }

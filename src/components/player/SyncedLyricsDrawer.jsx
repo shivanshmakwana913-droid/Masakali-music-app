@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Mic2, Edit3, Check, Plus, Trash2, Clock, Sparkles, 
-  RotateCcw, Save, Camera, Share2, Search, RefreshCw 
+  X, Mic2, Edit3, Check, Plus, Trash2, Clock, 
+  RotateCcw, Save, Camera, Search, RefreshCw 
 } from 'lucide-react';
 import { fetchLyrics } from '../../services/musicApi';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyricCard }) {
+  const { isDark } = useTheme();
   const { currentTrack, currentTime, seek, formatTime, isKaraokeMode, toggleKaraoke, showToast } = engine;
   
   const [lyricsList, setLyricsList] = useState([]);
@@ -42,160 +44,136 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
       return;
     }
 
-    // Fetch from backend with YouTube Captions fallback
-    fetchLyrics(currentTrack.title, currentTrack.artist, currentTrack.duration, currentTrack.id, false, currentTrack.id).then((res) => {
-      if (res && res.lyrics && res.lyrics.length > 0) {
-        setLyricsList(res.lyrics);
-        currentTrack.lyrics = res.lyrics;
-        if (res.source) setLyricsSource(res.source);
-      }
-    }).catch(() => {});
+    // Auto-fetch if not cached
+    fetchLyrics(currentTrack.title, currentTrack.artist, currentTrack.duration, currentTrack.id, false, currentTrack.id)
+      .then((res) => {
+        if (res && res.lyrics && res.lyrics.length > 0) {
+          setLyricsList(res.lyrics);
+          currentTrack.lyrics = res.lyrics;
+          if (res.source) setLyricsSource(res.source);
+          localStorage.setItem(storageKey, JSON.stringify(res));
+        }
+      })
+      .catch(() => {});
   }, [currentTrack]);
 
-  // Handle Manual Custom Lyrics Search
-  const handleManualSearch = async (e) => {
-    if (e) e.preventDefault();
-    if (!manualSearchQuery.trim()) return;
+  // Track active line according to currentTime
+  useEffect(() => {
+    if (!lyricsList.length) return;
+    let found = -1;
+    for (let i = 0; i < lyricsList.length; i++) {
+      if (currentTime >= lyricsList[i].time) {
+        found = i;
+      } else {
+        break;
+      }
+    }
+    if (found !== activeLineIndex) {
+      setActiveLineIndex(found);
+    }
+  }, [currentTime, lyricsList, activeLineIndex]);
 
+  // Auto-scroll active line to center
+  useEffect(() => {
+    if (!isEditMode && activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeLineIndex, isEditMode]);
+
+  if (!isOpen) return null;
+
+  // Manual Lyrics Search Form
+  const handleManualSearch = async (e) => {
+    e.preventDefault();
+    if (!manualSearchQuery.trim()) return;
     setIsManualSearching(true);
     try {
-      const res = await fetchLyrics(
-        manualSearchQuery.trim(), 
-        '', 
-        engine.duration || currentTrack?.duration || 0, 
-        currentTrack?.id, 
-        true, // forceRefresh
-        currentTrack?.id
-      );
-
+      const res = await fetchLyrics(manualSearchQuery.trim(), currentTrack?.artist || '', currentTrack?.duration, currentTrack?.id, false, currentTrack?.id);
       if (res && res.lyrics && res.lyrics.length > 0) {
         setLyricsList(res.lyrics);
         if (currentTrack) currentTrack.lyrics = res.lyrics;
-        if (res.source) setLyricsSource(res.source);
-        localStorage.setItem(`as_music_lyrics_${currentTrack?.id}`, JSON.stringify(res.lyrics));
-        if (showToast) showToast(`Found ${res.lyrics.length} lyrics from ${res.source || 'LRCLIB'}`);
+        setLyricsSource(res.source || 'LRCLIB');
+        const storageKey = `as_music_lyrics_${currentTrack?.id}`;
+        localStorage.setItem(storageKey, JSON.stringify(res));
+        if (showToast) showToast('Synced lyrics updated!');
         setIsManualSearchOpen(false);
       } else {
-        if (showToast) showToast(`No matching lyrics found for "${manualSearchQuery}"`);
+        if (showToast) showToast('No lyrics found for this query');
       }
-    } catch (err) {
-      if (showToast) showToast('Failed to fetch manual lyrics');
+    } catch (_) {
+      if (showToast) showToast('Search failed');
     } finally {
       setIsManualSearching(false);
     }
   };
 
-  // Sync active line based on current playback time
-  useEffect(() => {
-    if (!lyricsList || lyricsList.length === 0) return;
-    
-    // Find the current active line
-    let foundIndex = -1;
-    for (let i = 0; i < lyricsList.length; i++) {
-      if (currentTime >= lyricsList[i].time) {
-        foundIndex = i;
-      } else {
-        break;
-      }
-    }
-
-    if (foundIndex !== activeLineIndex) {
-      setActiveLineIndex(foundIndex);
-    }
-  }, [currentTime, lyricsList, activeLineIndex]);
-
-  // Auto-scroll active line into view smoothly
-  useEffect(() => {
-    if (isEditMode || !isOpen) return;
-    if (activeLineRef.current) {
-      activeLineRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }
-  }, [activeLineIndex, isEditMode, isOpen]);
-
-  // Handle Editing Actions
-  const handleTimeChange = (index, delta) => {
-    setLyricsList((prev) => {
-      const copy = [...prev];
-      copy[index] = {
-        ...copy[index],
-        time: Math.max(0, parseFloat((copy[index].time + delta).toFixed(1)))
-      };
-      return copy.sort((a, b) => a.time - b.time);
-    });
+  // Lyric Editor Line Controls
+  const handleTextChange = (idx, text) => {
+    const updated = [...lyricsList];
+    updated[idx].text = text;
+    setLyricsList(updated);
   };
 
-  const handleStampCurrentTime = (index) => {
-    setLyricsList((prev) => {
-      const copy = [...prev];
-      copy[index] = {
-        ...copy[index],
-        time: parseFloat(currentTime.toFixed(1))
-      };
-      return copy.sort((a, b) => a.time - b.time);
-    });
+  const handleTimeChange = (idx, delta) => {
+    const updated = [...lyricsList];
+    updated[idx].time = Math.max(0, parseFloat((updated[idx].time + delta).toFixed(2)));
+    setLyricsList(updated);
   };
 
-  const handleTextChange = (index, newText) => {
-    setLyricsList((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], text: newText };
-      return copy;
-    });
+  const handleStampCurrentTime = (idx) => {
+    const updated = [...lyricsList];
+    updated[idx].time = parseFloat(currentTime.toFixed(2));
+    setLyricsList(updated);
+  };
+
+  const handleDeleteLine = (idx) => {
+    const updated = lyricsList.filter((_, i) => i !== idx);
+    setLyricsList(updated);
   };
 
   const handleAddLine = () => {
-    const newLine = {
-      time: parseFloat(currentTime.toFixed(1)),
-      text: "New lyric line..."
-    };
-    setLyricsList((prev) => [...prev, newLine].sort((a, b) => a.time - b.time));
-  };
-
-  const handleDeleteLine = (index) => {
-    setLyricsList((prev) => prev.filter((_, i) => i !== index));
+    const newLine = { time: parseFloat(currentTime.toFixed(2)), text: 'New Lyric Line' };
+    const updated = [...lyricsList, newLine].sort((a, b) => a.time - b.time);
+    setLyricsList(updated);
   };
 
   const handleSaveLyrics = () => {
     if (currentTrack) {
-      localStorage.setItem(`as_music_lyrics_${currentTrack.id}`, JSON.stringify(lyricsList));
+      currentTrack.lyrics = lyricsList;
+      const storageKey = `as_music_lyrics_${currentTrack.id}`;
+      localStorage.setItem(storageKey, JSON.stringify({ lyrics: lyricsList, source: 'Custom (User Edited)' }));
+      setLyricsSource('Custom (User Edited)');
     }
     setIsEditMode(false);
+    if (showToast) showToast('Custom synced lyrics saved!');
   };
-
-  const handleResetDefault = () => {
-    if (currentTrack) {
-      localStorage.removeItem(`as_music_lyrics_${currentTrack.id}`);
-      setLyricsList(currentTrack.lyrics || []);
-    }
-    setIsEditMode(false);
-  };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity">
       {/* Sliding Drawer Container */}
-      <div className="w-full sm:w-[500px] h-full bg-[#0B0B10] border-l border-white/[0.08] shadow-2xl flex flex-col p-5 sm:p-6 select-none overflow-hidden selection:bg-cyan-500/30">
+      <div className={`w-full sm:w-[500px] h-full border-l shadow-2xl flex flex-col p-5 sm:p-6 overflow-hidden select-none transition-colors ${
+        isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+      }`}>
         
-        {/* Manual Lyrics Search Bar & Subheader */}
+        {/* Manual search bar */}
         {isManualSearchOpen ? (
-          <form onSubmit={handleManualSearch} className="my-2.5 p-2 rounded-xl bg-pitch-deep border border-cyan-500/40 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 shrink-0">
-            <Search className="w-4 h-4 text-cyan-400 shrink-0 ml-1" />
+          <form onSubmit={handleManualSearch} className="flex items-center gap-2 pb-3 border-b border-zinc-800 shrink-0">
             <input
               type="text"
-              autoFocus
-              placeholder="Search exact song name or artist..."
               value={manualSearchQuery}
               onChange={(e) => setManualSearchQuery(e.target.value)}
-              className="bg-transparent text-xs text-white placeholder-zinc-500 flex-1 focus:outline-none"
+              placeholder="Search song title or lyrics..."
+              className={`flex-1 rounded-xl px-3 py-1.5 text-xs border focus:outline-none ${
+                isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-zinc-100 border-zinc-200 text-black'
+              }`}
+              autoFocus
             />
             <button
               type="submit"
               disabled={isManualSearching}
-              className="px-3 py-1 bg-cyan-400 text-black text-xs font-bold rounded-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-1 disabled:opacity-50 shrink-0"
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs ${
+                isDark ? 'bg-white text-black' : 'bg-black text-white'
+              }`}
             >
               {isManualSearching ? <RefreshCw className="w-3 h-3 animate-spin" /> : <span>Search</span>}
             </button>
@@ -208,35 +186,47 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
             </button>
           </form>
         ) : (
-          <div className="flex items-center justify-between py-2 text-xs border-b border-white/[0.06] shrink-0">
-            <span className="text-[11px] text-zinc-400">
-              Source: <span className="text-zinc-200 font-medium">{lyricsSource}</span>
+          <div className={`flex items-center justify-between py-2 text-xs border-b shrink-0 ${
+            isDark ? 'border-zinc-800' : 'border-zinc-200'
+          }`}>
+            <span className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Source: <span className="font-semibold">{lyricsSource}</span>
             </span>
             <button
               onClick={() => {
                 setManualSearchQuery(currentTrack?.title || '');
                 setIsManualSearchOpen(true);
               }}
-              className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors"
+              className={`text-[11px] font-bold flex items-center gap-1.5 hover:underline ${
+                isDark ? 'text-zinc-300' : 'text-zinc-700'
+              }`}
             >
               <Search className="w-3 h-3" />
-              <span>Wrong lyrics? Search manually</span>
+              <span>Search manually</span>
             </button>
           </div>
         )}
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08] shrink-0">
+
+        {/* Drawer Header */}
+        <div className={`flex items-center justify-between py-3 border-b shrink-0 ${
+          isDark ? 'border-zinc-800' : 'border-zinc-200'
+        }`}>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+            <div className={`p-2 rounded-xl border ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-zinc-100 border-zinc-200 text-black'
+            }`}>
               <Mic2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span>Karaoke Lyrics</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  LRC SYNC
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span>Lyrics</span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                }`}>
+                  SYNC
                 </span>
               </h3>
-              <p className="text-xs text-zinc-400 truncate max-w-[200px]">
+              <p className={`text-xs truncate max-w-[200px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                 {currentTrack?.title} • {currentTrack?.artist}
               </p>
             </div>
@@ -246,10 +236,10 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
             {/* Live Karaoke Mode Vocal Remover Toggle */}
             <button
               onClick={toggleKaraoke}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all ${
                 isKaraokeMode
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.4)]'
-                  : 'bg-white/[0.04] text-zinc-300 border-white/10 hover:text-white'
+                  ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
+                  : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
               }`}
               title="Cancel Lead Vocals (Real-Time Vocal Remover)"
             >
@@ -261,85 +251,35 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
             {onOpenLyricCard && (
               <button
                 onClick={() => onOpenLyricCard(activeLineIndex >= 0 ? activeLineIndex : 0)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-400 to-violet-500 text-black flex items-center gap-1.5 shadow hover:scale-105 active:scale-95 transition-all"
-                title="Generate 1080x1920 Story Card for WhatsApp / Instagram"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all ${
+                  isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                }`}
+                title="Generate 9:16 Story Card for WhatsApp / Instagram"
               >
                 <Camera className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Story Card</span>
               </button>
             )}
 
-            {/* Edit / Sync Mode Toggle */}
-            <button
-              onClick={() => {
-                if (isEditMode) {
-                  handleSaveLyrics();
-                } else {
-                  setIsEditMode(true);
-                }
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all ${
-                isEditMode
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
-                  : 'bg-white/[0.04] text-zinc-300 border-white/10 hover:text-white'
-              }`}
-            >
-              {isEditMode ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Done</span>
-                </>
-              ) : (
-                <>
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Sync</span>
-                </>
-              )}
-            </button>
-
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className={`p-2 rounded-xl transition-colors ${
+                isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
+              }`}
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Sync Editor Controls Bar (When in Edit Mode) */}
-        {isEditMode && (
-          <div className="p-3 bg-pitch-deep/90 border border-white/[0.06] rounded-xl my-3 flex items-center justify-between text-xs shrink-0">
-            <span className="text-zinc-400">
-              Current: <strong className="text-cyan-400 font-mono">{formatTime(currentTime)}</strong>
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleAddLine}
-                className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs font-medium flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Line</span>
-              </button>
-              <button
-                onClick={handleResetDefault}
-                className="px-2.5 py-1 rounded-lg bg-white/5 text-zinc-400 hover:text-white text-xs flex items-center gap-1"
-                title="Reset to default lyrics"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Lyrics Scrollable Area */}
+        {/* Lyrics Scrollable Body */}
         <div 
           ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto py-6 space-y-5 px-1 scroll-smooth"
+          className="flex-1 overflow-y-auto py-4 space-y-2 pr-1 scroll-smooth"
         >
           {lyricsList.length === 0 ? (
-            <div className="text-center py-20 text-zinc-400 text-sm">
-              No synced lyrics available for this track. Click "Sync Editor" to add!
+            <div className={`text-center py-20 text-sm ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              No synced lyrics available for this track. Use "Search manually" above!
             </div>
           ) : (
             lyricsList.map((line, idx) => {
@@ -349,88 +289,49 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
                   key={idx}
                   ref={isActive ? activeLineRef : null}
                   onClick={() => !isEditMode && seek(line.time)}
-                  className={`transition-all duration-300 rounded-xl p-2.5 cursor-pointer ${
+                  className={`transition-all duration-300 rounded-xl p-3 cursor-pointer ${
                     isActive && !isEditMode
-                      ? 'bg-gradient-to-r from-cyan-500/20 via-violet-500/15 to-transparent border-l-4 border-cyan-400 pl-4 scale-[1.02]'
-                      : 'hover:bg-white/[0.03]'
+                      ? isDark 
+                        ? 'bg-zinc-900 border-l-4 border-white pl-4' 
+                        : 'bg-zinc-100 border-l-4 border-black pl-4'
+                      : isDark ? 'hover:bg-zinc-900/50' : 'hover:bg-zinc-50'
                   }`}
                 >
-                  {isEditMode ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 font-mono text-xs text-cyan-400">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{formatTime(line.time)}</span>
-                          <span className="text-[10px] text-zinc-400">({line.time}s)</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleTimeChange(idx, -0.5)}
-                            className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] hover:text-white"
-                          >
-                            -0.5s
-                          </button>
-                          <button
-                            onClick={() => handleTimeChange(idx, 0.5)}
-                            className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] hover:text-white"
-                          >
-                            +0.5s
-                          </button>
-                          <button
-                            onClick={() => handleStampCurrentTime(idx)}
-                            className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] hover:bg-cyan-500/30 font-semibold"
-                            title="Stamp current playback time to this line"
-                          >
-                            Stamp Now
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLine(idx)}
-                            className="p-1 text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <input
-                        type="text"
-                        value={line.text}
-                        onChange={(e) => handleTextChange(idx, e.target.value)}
-                        className="w-full bg-pitch-deep border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
-                      />
+                  <div className="flex items-center justify-between group">
+                    <div className="flex-1 pr-3">
+                      <p
+                        className={`text-base sm:text-lg font-bold transition-all leading-relaxed ${
+                          isActive
+                            ? isDark
+                              ? 'text-white font-black text-xl sm:text-2xl drop-shadow'
+                              : 'text-black font-black text-xl sm:text-2xl'
+                            : isDark
+                              ? 'text-zinc-500 hover:text-zinc-300'
+                              : 'text-zinc-400 hover:text-zinc-600'
+                        }`}
+                      >
+                        {line.text}
+                      </p>
+                      <span className={`text-[10px] font-mono mt-0.5 block ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                        {formatTime(line.time)}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between group">
-                      <div className="flex-1 pr-3">
-                        <p
-                          className={`text-base sm:text-lg font-bold transition-all leading-relaxed ${
-                            isActive
-                              ? 'bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent font-extrabold text-xl sm:text-2xl drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                              : 'text-zinc-400 hover:text-zinc-200'
-                          }`}
-                        >
-                          {line.text}
-                        </p>
-                        <span className="text-[10px] font-mono text-zinc-400 mt-0.5 block">
-                          {formatTime(line.time)}
-                        </span>
-                      </div>
 
-                      {onOpenLyricCard && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenLyricCard(idx);
-                          }}
-                          className="p-2 rounded-xl text-zinc-500 hover:text-cyan-400 hover:bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                          title="Generate story card for this line"
-                        >
-                          <Camera className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    {onOpenLyricCard && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenLyricCard(idx);
+                        }}
+                        className={`p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all shrink-0 ${
+                          isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-600 hover:text-black hover:bg-zinc-200'
+                        }`}
+                        title="Generate story card for this line"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -438,9 +339,11 @@ export default function SyncedLyricsDrawer({ isOpen, onClose, engine, onOpenLyri
         </div>
 
         {/* Footer info */}
-        <div className="pt-3 border-t border-white/[0.08] text-[11px] text-zinc-400 flex items-center justify-between shrink-0">
+        <div className={`pt-3 border-t text-[11px] flex items-center justify-between shrink-0 ${
+          isDark ? 'border-zinc-800 text-zinc-500' : 'border-zinc-200 text-zinc-500'
+        }`}>
           <span>Click any line to seek instantly</span>
-          <span className="font-mono text-cyan-400">Auto-Scroll Active</span>
+          <span className="font-mono font-bold">Auto-Scroll Active</span>
         </div>
 
       </div>

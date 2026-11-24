@@ -182,3 +182,21 @@ export async function isTrackOffline(trackId) {
     return false;
   }
 }
+
+/**
+ * Clear all cached offline tracks from IndexedDB
+ */
+export async function clearOfflineDatabase() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}

@@ -5,71 +5,91 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --bg-main: #000000;
+    --bg-surface: #0A0A0A;
+    --bg-card: #141414;
+    --border-subtle: #262626;
+    --text-primary: #FFFFFF;
+    --text-muted: #A1A1AA;
+  }
+
+  html.light {
+    color-scheme: light;
+    --bg-main: #FFFFFF;
+    --bg-surface: #FAFAFA;
+    --bg-card: #F4F4F5;
+    --border-subtle: #E4E4E7;
+    --text-primary: #09090B;
+    --text-muted: #71717A;
   }
   
   body {
-    background-color: #050507;
-    color: #F8FAFC;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Custom Smooth Scrollbar */
+  /* Clean Minimalist Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: #050507;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e1e24;
+    background: rgba(150, 150, 150, 0.2);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #06B6D4;
+    background: rgba(150, 150, 150, 0.4);
   }
 }
 
 @layer utilities {
   .glass-panel {
-    background: rgba(17, 17, 22, 0.72);
+    background: rgba(20, 20, 20, 0.75);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
   }
 
   .glass-card {
-    background: rgba(17, 17, 22, 0.6);
+    background: rgba(20, 20, 20, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+  }
+
+  html.light .glass-card {
+    background: rgba(244, 244, 245, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
   }
 
   .glass-card:hover {
-    background: rgba(23, 23, 30, 0.85);
-    border-color: rgba(6, 182, 212, 0.25);
-    transform: translateY(-2px);
+    background: rgba(30, 30, 30, 0.85);
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
-  .text-glow-cyan {
-    text-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
-  }
-
-  .text-glow-violet {
-    text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
-  }
-
-  .border-glow-cyan {
-    box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
-  }
-
-  .border-glow-violet {
-    box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.35);
+  html.light .glass-card:hover {
+    background: rgba(228, 228, 231, 0.95);
+    border-color: rgba(0, 0, 0, 0.15);
   }
 
   .font-display {
-    font-family: 'Outfit', 'Syne', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 }
 

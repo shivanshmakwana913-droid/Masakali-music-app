@@ -1,6 +1,10 @@
 import React from 'react';
-import { Home, Search, Library, Sliders, ListMusic, Sparkles, FolderOpen, Share2, Heart, BarChart2, Download } from 'lucide-react';
+import { 
+  Home, Search, Library, Sliders, ListMusic, 
+  FolderOpen, Share2, Heart, BarChart2, Download, Settings, Disc
+} from 'lucide-react';
 import { quickPlaylists } from '../../data/mockTracks';
+import { useTheme } from '../../context/ThemeContext';
 import MasakaliLogo from '../common/MasakaliLogo';
 
 export default function Sidebar({ 
@@ -9,6 +13,7 @@ export default function Sidebar({
   onOpenStudio, 
   onOpenQueue,
   onOpenStats,
+  onOpenSettings,
   likedCount = 0, 
   offlineCount = 0,
   localCount = 0,
@@ -20,6 +25,8 @@ export default function Sidebar({
   onOpenDownload,
   isInstalled = false
 }) {
+  const { isDark } = useTheme();
+
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'search', label: 'Search', icon: Search },
@@ -27,18 +34,22 @@ export default function Sidebar({
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-[#0B0B10]/95 border-r border-white/[0.06] p-4 select-none shrink-0 justify-between h-[calc(100vh-80px)] overflow-y-auto">
+    <aside className={`hidden md:flex flex-col w-64 border-r p-4 select-none shrink-0 justify-between h-[calc(100vh-80px)] overflow-y-auto transition-colors duration-200 ${
+      isDark ? 'bg-[#0A0A0A] border-zinc-800/80 text-white' : 'bg-[#FAFAFA] border-zinc-200 text-zinc-950'
+    }`}>
       {/* Top Branding & Main Navigation */}
       <div className="space-y-5">
         
         {/* Clean Logo */}
         <div className="flex items-center gap-2.5 px-2 py-1">
-          <MasakaliLogo className="w-8 h-8 rounded-xl object-cover" />
+          <MasakaliLogo className="w-8 h-8 rounded-xl object-contain bg-black border border-zinc-800" />
           <div>
-            <div className="font-extrabold text-lg tracking-tight text-white flex items-center gap-1.5">
-              <span>Masakali</span>
+            <div className={`font-black text-lg tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+              Masakali
             </div>
-            <p className="text-[10px] text-zinc-400 font-medium tracking-tight">Free Your Music</p>
+            <p className={`text-[10px] font-medium tracking-tight ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+              Free Your Music
+            </p>
           </div>
         </div>
 
@@ -53,16 +64,28 @@ export default function Sidebar({
                 onClick={() => setCurrentTab(item.id)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-cyan-500/20 via-violet-500/15 to-transparent text-white border-l-2 border-cyan-400 shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                    ? isDark
+                      ? 'bg-white text-black shadow-sm font-bold'
+                      : 'bg-black text-white shadow-sm font-bold'
+                    : isDark
+                      ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60'
+                      : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-zinc-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? (isDark ? 'text-black' : 'text-white') : ''}`} />
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isActive
+                      ? isDark
+                        ? 'bg-zinc-200 text-black border-zinc-300'
+                        : 'bg-zinc-800 text-white border-zinc-700'
+                      : isDark
+                        ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                        : 'bg-zinc-200 text-zinc-700 border-zinc-300'
+                  }`}>
                     {item.badge}
                   </span>
                 )}
@@ -72,13 +95,17 @@ export default function Sidebar({
 
           {/* Play Local Audio File Trigger */}
           {onLocalFilesSelect && (
-            <label className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer">
+            <label className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60'
+            }`}>
               <div className="flex items-center gap-3">
-                <FolderOpen className="w-4 h-4 text-cyan-400" />
+                <FolderOpen className="w-4 h-4" />
                 <span>Play Local Audio</span>
               </div>
               {localCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isDark ? 'bg-zinc-800 text-zinc-300 border-zinc-700' : 'bg-zinc-200 text-zinc-700 border-zinc-300'
+                }`}>
                   {localCount}
                 </span>
               )}
@@ -95,14 +122,18 @@ export default function Sidebar({
           {/* Smart Queue Trigger */}
           <button
             onClick={onOpenQueue}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-zinc-300 hover:text-white hover:bg-white/[0.04] transition-all"
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <ListMusic className="w-4 h-4 text-cyan-400" />
+              <ListMusic className="w-4 h-4" />
               <span>Queue</span>
             </div>
             {queueCount > 0 && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                isDark ? 'bg-zinc-800 text-zinc-300 border-zinc-700' : 'bg-zinc-200 text-zinc-700 border-zinc-300'
+              }`}>
                 {queueCount}
               </span>
             )}
@@ -111,65 +142,94 @@ export default function Sidebar({
           {/* Audio Studio Trigger */}
           <button
             onClick={onOpenStudio}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-violet-300 hover:text-white bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-all group"
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+              isDark 
+                ? 'bg-zinc-900/60 border-zinc-800 hover:bg-zinc-850 hover:border-zinc-700 text-zinc-200' 
+                : 'bg-zinc-100 border-zinc-200 hover:bg-zinc-200 text-zinc-800'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <Sliders className="w-4 h-4 text-violet-400 group-hover:rotate-45 transition-transform" />
+              <Sliders className="w-4 h-4" />
               <span>Audio Studio</span>
             </div>
-            <span className="text-[10px] font-bold bg-violet-500/30 text-violet-200 px-2 py-0.5 rounded">
-              EQ
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+              isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-200 border-zinc-300 text-zinc-700'
+            }`}>
+              10-Band EQ
             </span>
           </button>
 
-          {/* Listening Stats & Wrapped Trigger */}
+          {/* Listening Stats Trigger */}
           {onOpenStats && (
             <button
               onClick={onOpenStats}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-cyan-300 hover:text-white hover:bg-white/[0.04] transition-all group"
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <BarChart2 className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <BarChart2 className="w-4 h-4" />
                 <span>Listening Stats</span>
               </div>
-              <span className="text-[10px] font-bold bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">
-                Stats
-              </span>
             </button>
           )}
 
-          {/* Download App Trigger (Only when not running as installed app) */}
+          {/* Settings Trigger */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className="w-4 h-4" />
+                <span>Settings</span>
+              </div>
+            </button>
+          )}
+
+          {/* Download App Trigger */}
           {!isInstalled && onOpenDownload && (
             <button
               onClick={onOpenDownload}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-cyan-300 hover:text-white bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-violet-500/10 hover:from-cyan-500/20 hover:to-violet-500/20 border border-cyan-500/30 transition-all shadow-[0_0_12px_rgba(6,182,212,0.15)] group"
-              title="Download Masakali App (Android APK / 1-Tap Install)"
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                isDark 
+                  ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-white' 
+                  : 'bg-zinc-100 border-zinc-200 hover:bg-zinc-200 text-zinc-950'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Download className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <Download className="w-4 h-4" />
                 <span>Download App</span>
               </div>
-              <span className="text-[10px] font-extrabold bg-gradient-to-r from-cyan-500 to-blue-500 text-black px-2 py-0.5 rounded shadow-sm">
-                APK / PWA
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                isDark ? 'bg-white text-black' : 'bg-black text-white'
+              }`}>
+                APK
               </span>
             </button>
           )}
         </nav>
 
         {/* Playlists */}
-        <div className="pt-3 border-t border-white/[0.06] space-y-1.5">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-2 flex items-center justify-between">
+        <div className={`pt-3 border-t space-y-1.5 ${isDark ? 'border-zinc-800/60' : 'border-zinc-200'}`}>
+          <div className={`text-[11px] font-bold uppercase tracking-wider px-2 flex items-center justify-between ${
+            isDark ? 'text-zinc-500' : 'text-zinc-400'
+          }`}>
             <span>Vibe Mixes</span>
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <Disc className="w-3.5 h-3.5" />
           </div>
           <div className="space-y-0.5">
             {quickPlaylists.slice(0, 4).map((pl) => (
               <button
                 key={pl.id}
                 onClick={() => onSelectPlaylist(pl)}
-                className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-cyan-300 hover:bg-white/[0.03] transition-colors truncate flex items-center gap-2"
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs truncate flex items-center gap-2 transition-colors ${
+                  isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/40' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/50'
+                }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shrink-0"></span>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isDark ? 'bg-zinc-500' : 'bg-zinc-400'}`}></span>
                 <span className="truncate">{pl.title}</span>
               </button>
             ))}
@@ -179,15 +239,19 @@ export default function Sidebar({
       </div>
 
       {/* Bottom Actions: Share App & Support Creator */}
-      <div className="pt-4 border-t border-white/[0.06] space-y-2 mt-auto">
+      <div className={`pt-4 border-t space-y-2 mt-auto ${isDark ? 'border-zinc-800/60' : 'border-zinc-200'}`}>
         <div className="grid grid-cols-2 gap-1.5">
           {onShareApp && (
             <button
               onClick={onShareApp}
-              className="py-2 px-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-semibold text-zinc-300 hover:text-white border border-white/[0.06] flex items-center justify-center gap-1.5 transition-all"
-              title="Share Masakali 🕊️ with Friends"
+              className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                isDark 
+                  ? 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-800' 
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-950 border-zinc-200'
+              }`}
+              title="Share Masakali with Friends"
             >
-              <Share2 className="w-3.5 h-3.5 text-cyan-400" />
+              <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
             </button>
           )}
@@ -195,22 +259,28 @@ export default function Sidebar({
           {onOpenSupport && (
             <button
               onClick={onOpenSupport}
-              className="py-2 px-2.5 rounded-xl bg-gradient-to-r from-rose-500/15 to-violet-500/15 hover:from-rose-500/25 hover:to-violet-500/25 text-xs font-semibold text-rose-300 hover:text-rose-200 border border-rose-500/30 flex items-center justify-center gap-1.5 transition-all"
-              title="Keep Masakali Flying Free 🕊️ via UPI"
+              className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                isDark 
+                  ? 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 hover:text-white border-zinc-800' 
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 hover:text-zinc-950 border-zinc-200'
+              }`}
+              title="Support Masakali via UPI"
             >
-              <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400" />
+              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
               <span>Support</span>
             </button>
           )}
         </div>
 
-        {/* Ready status */}
-        <div className="p-2.5 rounded-xl bg-pitch-deep/90 border border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-400">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        {/* Status */}
+        <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11px] ${
+          isDark ? 'bg-zinc-950 border-zinc-800/80 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
+        }`}>
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             100% Offline Ready
           </span>
-          <span className="text-zinc-500">{offlineCount + localCount} Ready</span>
+          <span className={isDark ? 'text-zinc-500' : 'text-zinc-400'}>{offlineCount + localCount} Ready</span>
         </div>
       </div>
     </aside>

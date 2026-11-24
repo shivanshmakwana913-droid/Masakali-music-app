@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import PlayerApp from './pages/PlayerApp';
 import SplashLoader from './components/common/SplashLoader';
 
-export default function App() {
+function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
+  const { isDark } = useTheme();
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white relative">
+    <div className={`min-h-screen ${isDark ? 'bg-black text-white' : 'bg-white text-zinc-950'} transition-colors duration-200 relative select-none`}>
       {/* 1.3-Second Non-Blocking Animated Splash Screen */}
       {showSplash && (
         <SplashLoader
@@ -15,8 +17,16 @@ export default function App() {
         />
       )}
 
-      {/* Main Music Studio & Player (mounts and warms up immediately) */}
+      {/* Main Music Studio & Player */}
       <PlayerApp />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

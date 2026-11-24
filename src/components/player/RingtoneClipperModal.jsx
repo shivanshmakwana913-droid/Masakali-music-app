@@ -4,6 +4,7 @@ import {
   Sparkles, Music, Waves, Sliders, Check, Volume2 
 } from 'lucide-react';
 import { renderClippedAudio } from '../../utils/audioClipper';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function RingtoneClipperModal({
   isOpen,
@@ -11,6 +12,8 @@ export default function RingtoneClipperModal({
   track,
   engine
 }) {
+  const { isDark } = useTheme();
+
   const {
     currentTime,
     duration,
@@ -115,22 +118,30 @@ export default function RingtoneClipperModal({
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg bg-[#0F0F14] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl z-10 space-y-5 text-white">
+      <div className={`relative w-full max-w-lg border rounded-3xl p-5 sm:p-6 shadow-2xl z-10 space-y-5 transition-colors ${
+        isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+      }`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+        <div className={`flex items-center justify-between pb-3 border-b ${
+          isDark ? 'border-zinc-800' : 'border-zinc-200'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-zinc-100 border-zinc-200 text-black'
+            }`}>
               <Scissors className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold flex items-center gap-2">
                 <span>Ringtone & Status Clipper</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'
+                }`}>
                   30s HD
                 </span>
               </h3>
-              <p className="text-xs text-zinc-400 truncate max-w-[240px]">
+              <p className={`text-xs truncate max-w-[240px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                 {track.title} • {track.artist}
               </p>
             </div>
@@ -138,30 +149,39 @@ export default function RingtoneClipperModal({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+            className={`p-2 rounded-full transition-colors ${
+              isDark ? 'hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Live Studio Effects Baked-In Notification */}
-        <div className="p-3 rounded-2xl bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-white/[0.08] flex items-center justify-between text-xs">
+        <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs ${
+          isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+        }`}>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="font-semibold text-zinc-300">Effects included:</span>
+            <span className="font-semibold">Effects included:</span>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             {isSlowedReverb && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-200 border-zinc-300 text-black'
+              }`}>
                 Slowed + Reverb
               </span>
             )}
             {playbackSpeed !== 1.0 && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-200 border-zinc-300 text-black'
+              }`}>
                 {playbackSpeed}x
               </span>
             )}
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/10">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+              isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-200 border-zinc-300 text-zinc-700'
+            }`}>
               EQ: {activePreset}
             </span>
           </div>
@@ -169,38 +189,44 @@ export default function RingtoneClipperModal({
 
         {/* Visual Timeline Selection Bar */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono text-zinc-400">
-            <span>Start: <strong className="text-cyan-400">{formatTime(startTime)}</strong></span>
-            <span>Duration: <strong className="text-white">{clipDuration}s</strong></span>
-            <span>End: <strong className="text-violet-400">{formatTime(endTime)}</strong></span>
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span>Start: <strong className={isDark ? 'text-white' : 'text-black'}>{formatTime(startTime)}</strong></span>
+            <span>Duration: <strong>{clipDuration}s</strong></span>
+            <span>End: <strong className={isDark ? 'text-white' : 'text-black'}>{formatTime(endTime)}</strong></span>
           </div>
 
-          <div className="relative w-full h-8 bg-zinc-900 rounded-xl overflow-hidden border border-white/10 flex items-center">
+          <div className={`relative w-full h-8 rounded-xl overflow-hidden border flex items-center ${
+            isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
+          }`}>
             {/* Range highlight window */}
             <div
-              className="absolute top-0 bottom-0 bg-gradient-to-r from-cyan-500/40 via-violet-500/40 to-cyan-500/40 border-l-2 border-r-2 border-cyan-400 transition-all rounded"
+              className={`absolute top-0 bottom-0 border-l-2 border-r-2 transition-all rounded ${
+                isDark ? 'bg-white/20 border-white' : 'bg-black/20 border-black'
+              }`}
               style={{
                 left: `${(startTime / totalDuration) * 100}%`,
                 width: `${(clipDuration / totalDuration) * 100}%`
               }}
             />
-            {/* Waveform deco dots */}
-            <div className="w-full flex justify-between px-3 pointer-events-none opacity-30">
+            {/* Waveform dots */}
+            <div className="w-full flex justify-between px-3 pointer-events-none opacity-20">
               {Array.from({ length: 24 }).map((_, i) => (
-                <div key={i} className="w-0.5 h-4 bg-white rounded-full" />
+                <div key={i} className={`w-0.5 h-4 rounded-full ${isDark ? 'bg-white' : 'bg-black'}`} />
               ))}
             </div>
           </div>
         </div>
 
         {/* Sliders Control */}
-        <div className="space-y-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+        <div className={`space-y-4 p-4 rounded-2xl border ${
+          isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+        }`}>
           
           {/* Start Position Slider */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs">
-              <span className="text-zinc-400">Start Position:</span>
-              <span className="font-mono text-cyan-300 font-semibold">{formatTime(startTime)}</span>
+              <span className={isDark ? 'text-zinc-400' : 'text-zinc-500'}>Start Position:</span>
+              <span className="font-mono font-semibold">{formatTime(startTime)}</span>
             </div>
             <input
               type="range"
@@ -209,15 +235,15 @@ export default function RingtoneClipperModal({
               step="1"
               value={startTime}
               onChange={(e) => setStartTime(parseFloat(e.target.value))}
-              className="w-full cursor-pointer accent-cyan-400"
+              className={`w-full cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
             />
           </div>
 
           {/* Clip Length Slider (5s to 45s) */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs">
-              <span className="text-zinc-400">Clip Length:</span>
-              <span className="font-mono text-violet-300 font-semibold">{clipDuration} seconds</span>
+              <span className={isDark ? 'text-zinc-400' : 'text-zinc-500'}>Clip Length:</span>
+              <span className="font-mono font-semibold">{clipDuration} seconds</span>
             </div>
             <input
               type="range"
@@ -226,9 +252,9 @@ export default function RingtoneClipperModal({
               step="1"
               value={clipDuration}
               onChange={(e) => setClipDuration(parseInt(e.target.value, 10))}
-              className="w-full cursor-pointer accent-violet-400"
+              className={`w-full cursor-pointer ${isDark ? 'accent-white' : 'accent-black'}`}
             />
-            <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
+            <div className={`flex justify-between text-[10px] font-mono ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
               <span>5s (Notification)</span>
               <span>30s (Default Ringtone)</span>
               <span>45s (Story Status)</span>
@@ -243,16 +269,18 @@ export default function RingtoneClipperModal({
           {/* Preview Button */}
           <button
             onClick={handleTogglePreview}
-            className="flex-1 py-3 px-4 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+            className={`flex-1 py-3 px-4 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${
+              isDark ? 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-white' : 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-900'
+            }`}
           >
             {isPreviewing ? (
               <>
-                <Pause className="w-4 h-4 text-cyan-400 fill-cyan-400" />
+                <Pause className="w-4 h-4 fill-current" />
                 <span>Stop Preview</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 text-cyan-400 fill-cyan-400" />
+                <Play className="w-4 h-4 fill-current" />
                 <span>Preview ({clipDuration}s)</span>
               </>
             )}
@@ -262,11 +290,13 @@ export default function RingtoneClipperModal({
           <button
             onClick={handleExportRingtone}
             disabled={isExporting}
-            className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-400 to-violet-500 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            className={`flex-1 py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 ${
+              isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+            }`}
           >
             {isExporting ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
                 <span>Rendering...</span>
               </>
             ) : (
