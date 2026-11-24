@@ -201,12 +201,12 @@ export default function Sidebar({
             >
               <div className="flex items-center gap-3">
                 <Download className="w-4 h-4" />
-                <span>Download App</span>
+                <span>Install App</span>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                 isDark ? 'bg-white text-black' : 'bg-black text-white'
               }`}>
-                APK
+                PWA
               </span>
             </button>
           )}

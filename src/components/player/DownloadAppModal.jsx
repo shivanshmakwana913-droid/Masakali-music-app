@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  X, Download, Smartphone, Apple, Check, ExternalLink,
+  X, Smartphone, Apple, Check, ExternalLink,
   Layers, ShieldCheck, Zap
 } from 'lucide-react';
 import MasakaliLogo from '../common/MasakaliLogo';
@@ -16,12 +16,9 @@ export default function DownloadAppModal({
 }) {
   const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState(isIOS ? 'ios' : 'android');
-  const [downloadTriggered, setDownloadTriggered] = useState(false);
 
   if (!isOpen) return null;
 
-  // Direct APK link (GitHub release direct download or repo)
-  const APK_DOWNLOAD_URL = 'https://github.com/shivanshmakwana913-droid/Masakali-music-app/releases/latest/download/Masakali.apk';
   const GITHUB_REPO_URL = 'https://github.com/shivanshmakwana913-droid/Masakali-music-app';
 
   const handleNativeInstallClick = async () => {
@@ -31,19 +28,6 @@ export default function DownloadAppModal({
         onClose();
       }
     }
-  };
-
-  const handleApkDownload = () => {
-    setDownloadTriggered(true);
-    // Create hidden download trigger
-    const a = document.createElement('a');
-    a.href = APK_DOWNLOAD_URL;
-    a.setAttribute('download', 'Masakali.apk');
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => setDownloadTriggered(false), 4000);
   };
 
   return (
@@ -66,14 +50,14 @@ export default function DownloadAppModal({
             </div>
             <div>
               <h2 className="font-bold text-lg sm:text-xl tracking-tight flex items-center gap-2">
-                <span>Download Masakali</span>
+                <span>Install Masakali</span>
                 <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                   isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'
                 }`}>
-                  v1.0
+                  WEB APP
                 </span>
               </h2>
-              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>Free Your Music • Minimalist & Ad-Free</p>
+              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>Free Your Music • Fast, Minimalist & Ad-Free</p>
             </div>
           </div>
           <button
@@ -102,7 +86,7 @@ export default function DownloadAppModal({
             </div>
           )}
 
-          {/* 1-Tap Quick Native Install Action (Chromium / Supported browsers) */}
+          {/* 1-Tap Quick Native Install Action (Browser PWA prompt) */}
           {canInstallNative && (
             <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 ${
               isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-100 border-zinc-200'
@@ -123,7 +107,7 @@ export default function DownloadAppModal({
                 }`}
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Install Now</span>
+                <span>Add to Home Screen</span>
               </button>
             </div>
           )}
@@ -141,7 +125,7 @@ export default function DownloadAppModal({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span>Android APK</span>
+              <span>Android (Chrome)</span>
             </button>
             <button
               onClick={() => setActiveTab('ios')}
@@ -163,11 +147,11 @@ export default function DownloadAppModal({
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Web PWA</span>
+              <span>Desktop PWA</span>
             </button>
           </div>
 
-          {/* TAB 1: Android APK Download */}
+          {/* TAB 1: Android Chrome Instructions */}
           {activeTab === 'android' && (
             <div className="space-y-3">
               <div className={`p-4 rounded-2xl border space-y-3 ${
@@ -175,21 +159,21 @@ export default function DownloadAppModal({
               }`}>
                 <div>
                   <h3 className="font-bold text-sm flex items-center gap-2">
-                    <span>Masakali for Android</span>
+                    <span>How to Add Masakali on Android</span>
                     <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                       isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-800'
                     }`}>
-                      Direct APK
+                      Fast & Lightweight
                     </span>
                   </h3>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                    Install native standalone app. 100% ad-free, 10-Band EQ, and offline playback.
+                    Enjoy full-screen playback, 10-Band EQ, and offline caching directly through your browser.
                   </p>
                 </div>
 
                 <div className={`grid grid-cols-2 gap-2 text-[11px] py-1 ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
                   <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Zero Ads & Trackers</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -202,32 +186,60 @@ export default function DownloadAppModal({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5" />
-                    <span>Lightweight (&lt; 25MB)</span>
+                    <span>Under 1MB</span>
                   </div>
                 </div>
 
-                {/* Primary APK Download Button */}
-                <button
-                  onClick={handleApkDownload}
-                  className={`w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.98] ${
-                    isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
-                  }`}
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{downloadTriggered ? 'Starting Download...' : 'Download Masakali.apk'}</span>
-                </button>
-              </div>
+                {/* Step-by-Step Instructions */}
+                <div className="space-y-2 pt-1">
+                  <div className={`flex items-start gap-3 p-2.5 rounded-xl border ${
+                    isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200'
+                  }`}>
+                    <span className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
+                      isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-black'
+                    }`}>
+                      1
+                    </span>
+                    <div className="text-xs">
+                      <p className="font-semibold">Tap the Browser Menu</p>
+                      <p className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        In Chrome or Brave, tap the <strong>3 dots (⋮)</strong> menu in the top-right corner.
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Android Alternative: Add to Home Screen in Chrome */}
-              <div className={`p-3.5 rounded-2xl border text-xs space-y-2 ${
-                isDark ? 'bg-zinc-900/30 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
-              }`}>
-                <span className="font-bold">Alternative: Install via Chrome (0 Download)</span>
-                <ol className={`list-decimal list-inside space-y-1 text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                  <li>Tap the <strong>3 dots (⋮)</strong> menu in the top-right corner of Chrome.</li>
-                  <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
-                  <li>Enjoy full-screen Masakali right from your app drawer!</li>
-                </ol>
+                  <div className={`flex items-start gap-3 p-2.5 rounded-xl border ${
+                    isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200'
+                  }`}>
+                    <span className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
+                      isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-black'
+                    }`}>
+                      2
+                    </span>
+                    <div className="text-xs">
+                      <p className="font-semibold">Select "Add to Home screen"</p>
+                      <p className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`flex items-start gap-3 p-2.5 rounded-xl border ${
+                    isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200'
+                  }`}>
+                    <span className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
+                      isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-black'
+                    }`}>
+                      3
+                    </span>
+                    <div className="text-xs">
+                      <p className="font-semibold">Launch Directly</p>
+                      <p className={`text-[11px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                        Tap the Masakali icon on your home screen to enjoy full-screen music without address bars.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -347,19 +359,24 @@ export default function DownloadAppModal({
 
         </div>
 
-        {/* Modal Footer */}
-        <div className={`pt-3 border-t flex items-center justify-between text-[11px] shrink-0 ${
+        {/* Modal Footer with Clear Disclaimer */}
+        <div className={`pt-3 border-t flex flex-col gap-2 shrink-0 ${
           isDark ? 'border-zinc-800 text-zinc-500' : 'border-zinc-200 text-zinc-500'
         }`}>
-          <span>100% Free & Open Source</span>
-          <button
-            onClick={onClose}
-            className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
-              isDark ? 'bg-zinc-900 hover:bg-zinc-800 text-white' : 'bg-zinc-100 hover:bg-zinc-200 text-black'
-            }`}
-          >
-            Done
-          </button>
+          <div className="flex items-center justify-between text-[11px]">
+            <span>100% Free & Open Source PWA</span>
+            <button
+              onClick={onClose}
+              className={`px-4 py-1.5 rounded-xl font-bold transition-all ${
+                isDark ? 'bg-zinc-900 hover:bg-zinc-800 text-white' : 'bg-zinc-100 hover:bg-zinc-200 text-black'
+              }`}
+            >
+              Done
+            </button>
+          </div>
+          <p className="text-[10px] text-center opacity-80 leading-relaxed">
+            Masakali is an educational open-source audio player interface. All media belongs to respective owners.
+          </p>
         </div>
       </div>
     </div>

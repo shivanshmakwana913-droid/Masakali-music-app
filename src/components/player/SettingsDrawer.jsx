@@ -556,10 +556,12 @@ export default function SettingsDrawer({
             )}
           </section>
 
-          {/* Version Info */}
-          <div className={`text-center pt-2 pb-4 ${isDark ? 'text-zinc-600' : 'text-zinc-400'} text-[11px] space-y-0.5`}>
+          {/* Version Info & Disclaimer */}
+          <div className={`text-center pt-2 pb-4 ${isDark ? 'text-zinc-600' : 'text-zinc-400'} text-[11px] space-y-1.5`}>
             <div>Masakali 🕊️ v1.0 • Engineered by Shivansh Makwana</div>
-            <div>Pure Sound • Simple Black & White Theme • &lt;1MB Bundle</div>
+            <p className="text-[10px] leading-relaxed max-w-xs mx-auto text-zinc-500">
+              Masakali is an educational open-source audio player interface. All media belongs to respective owners.
+            </p>
           </div>
 
         </div>

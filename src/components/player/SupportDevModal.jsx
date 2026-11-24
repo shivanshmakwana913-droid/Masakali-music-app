@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Heart, Copy, Check, Coffee, ShieldCheck } from 'lucide-react';
+import { X, Heart, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import MasakaliLogo from '../common/MasakaliLogo';
 
@@ -11,10 +11,6 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
   if (!isOpen) return null;
 
   const upiId = 'shivanshmakwana913@okaxis';
-  const payeeName = 'Masakali Creator';
-  const note = 'Keep Masakali Flying Free 🕊️';
-
-  const upiDeepLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${selectedAmount}&cu=INR&tn=${encodeURIComponent(note)}`;
 
   const handleCopyUPI = async () => {
     try {
@@ -73,14 +69,14 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
             Enjoy studio-grade acoustics (10-Band EQ, Slowed+Reverb, 8D Spatial Audio, and Live Karaoke) in an ultra-lightweight player under 1MB.
           </p>
           <p className={`text-[11px] pt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-            If Masakali brings peace, rhythm, or joy to your day, consider chipping in for hosting & server costs so it can fly free forever for everyone!
+            If Masakali brings peace or joy to your day, consider chipping in to cover hosting & server expenses so it can fly free for everyone!
           </p>
         </div>
 
-        {/* Quick Amount Selector */}
+        {/* Suggested Contribution Amount */}
         <div className="space-y-1.5">
           <label className={`text-[11px] font-semibold block ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-            Choose Contribution Amount (INR):
+            Suggested Contribution (INR):
           </label>
           <div className="grid grid-cols-4 gap-2">
             {['50', '100', '250', '500'].map((amt) => (
@@ -103,43 +99,30 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
           </div>
         </div>
 
-        {/* UPI Deep Link Action Button */}
+        {/* Copyable UPI ID Box & Button (No external custom protocol redirects) */}
         <div className="space-y-3 pt-1">
-          <a
-            href={upiDeepLink}
-            className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 shadow-md ${
-              isDark
-                ? 'bg-white text-black hover:bg-zinc-200'
-                : 'bg-black text-white hover:bg-zinc-800'
-            }`}
-          >
-            <Coffee className="w-4 h-4" />
-            <span>Pay ₹{selectedAmount} via UPI (GPay / PhonePe / Paytm)</span>
-          </a>
-
-          {/* Copy UPI ID Box */}
-          <div className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${
-            isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
+          <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+            isDark ? 'bg-zinc-900/80 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
           }`}>
             <div className="min-w-0 flex-1">
               <span className={`text-[10px] font-medium block uppercase tracking-wider ${
                 isDark ? 'text-zinc-500' : 'text-zinc-400'
               }`}>
-                Direct UPI ID
+                Official UPI ID (GPay / PhonePe / Paytm / BHIM)
               </span>
-              <span className="font-mono text-xs font-semibold select-all truncate block">
+              <span className="font-mono text-sm font-bold select-all truncate block mt-0.5">
                 {upiId}
               </span>
             </div>
 
             <button
               onClick={handleCopyUPI}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
                 copied
-                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
                   : isDark
-                    ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
-                    : 'bg-zinc-200 border-zinc-300 text-zinc-800 hover:bg-zinc-300'
+                    ? 'bg-white text-black border-white hover:bg-zinc-200 shadow-sm'
+                    : 'bg-black text-white border-black hover:bg-zinc-800 shadow-sm'
               }`}
             >
               {copied ? (
@@ -150,19 +133,28 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy UPI</span>
+                  <span>Copy UPI ID</span>
                 </>
               )}
             </button>
           </div>
+
+          <p className={`text-[11px] text-center ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+            Open your preferred UPI app (Google Pay, PhonePe, Paytm, or BHIM) and paste the copied ID to pay ₹{selectedAmount}.
+          </p>
         </div>
 
-        {/* Security badge */}
-        <div className={`flex items-center justify-center gap-1.5 text-[11px] ${
-          isDark ? 'text-zinc-500' : 'text-zinc-400'
+        {/* Security badge & Disclaimer */}
+        <div className={`space-y-2 pt-1 border-t text-[11px] ${
+          isDark ? 'border-zinc-800/80 text-zinc-500' : 'border-zinc-200 text-zinc-400'
         }`}>
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Direct zero-commission creator support • 100% Secure UPI</span>
+          <div className="flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Direct zero-commission creator support • 100% Safe UPI Transfer</span>
+          </div>
+          <p className="text-[10px] text-center leading-relaxed opacity-80">
+            Masakali is an educational open-source audio player interface. All media belongs to respective owners.
+          </p>
         </div>
 
       </div>

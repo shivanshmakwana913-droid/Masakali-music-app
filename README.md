@@ -18,12 +18,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/shivanshmakwana913-droid/Masakali-music-app/releases/latest/download/Masakali.apk">
-    <img src="https://img.shields.io/badge/⬇️_Direct_Download-Android_APK-10B981?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
-  </a>
-  &nbsp;&nbsp;
   <a href="https://pages.dev">
-    <img src="https://img.shields.io/badge/🌐_Launch_App-Live_Web_%2F_iOS-06B6D4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Web App" />
+    <img src="https://img.shields.io/badge/🌐_Launch_App-Live_Web_App-06B6D4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Web App" />
   </a>
 </p>
 
@@ -49,7 +45,7 @@
 - **🎨 9:16 Lyric Status Card Generator:** Design and download high-resolution Instagram Story & WhatsApp status quote cards with customizable themes (*OLED Dark Neon*, *Blurred Album Artwork*, *Frosted Glass*) watermarked with *"Made with Masakali 🕊️"*.
 
 ### 📱 Native Mobile & Background Experience
-- **📲 1-Tap App Installation (PWA / Android APK):** Native `beforeinstallprompt` integration to add Masakali to your home screen with zero browser address bars.
+- **📲 1-Tap App Installation (PWA / Add to Home Screen):** Native `beforeinstallprompt` integration to add Masakali to your home screen with zero browser address bars.
 - **📱 Background Audio & Screen-Off Playback:** `AudioContext` keep-alive and `visibilitychange` listeners ensure music never pauses when locking your phone or switching apps.
 - **🎧 Lock-Screen Media Session:** Full `navigator.mediaSession` integration with album art, title, artist, seek scrubber, and headphone button actions.
 - **📁 Play Local Audio Files:** Play offline MP3, WAV, M4A, and FLAC files directly from your device through the 10-band EQ and 8D spatial engine.
@@ -104,9 +100,9 @@ The optimized output is generated in `/dist` (**~112 kB gzipped** total).
 ## 📲 Install on Mobile Devices
 
 ### Android (Chrome / Brave / Edge)
-1. Tap the **"📲 Download App"** button in the top header (or the 3 dots **⋮** menu in Chrome).
+1. Tap the **"📲 Install App"** button in the top header (or the 3 dots **⋮** menu in Chrome).
 2. Tap **"Install app"** or **"Add to Home screen"**.
-3. Alternatively, download the direct **Masakali.apk** from the [GitHub Releases](https://github.com/shivanshmakwana913-droid/Masakali-music-app/releases).
+3. Enjoy full-screen Masakali right from your mobile home screen with zero browser address bars.
 
 ### iPhone & iPad (iOS Safari)
 1. Open the app in **Safari**.
@@ -137,6 +133,12 @@ Masakali is **100% free, ad-free, and open source**. If Masakali made your music
 <p align="center">
   <strong>UPI ID:</strong> <code>shivanshmakwana913@okaxis</code>
 </p>
+
+---
+
+## ⚖️ Disclaimer
+
+> Masakali is an educational open-source audio player interface. All media belongs to respective owners.
 
 ---
 

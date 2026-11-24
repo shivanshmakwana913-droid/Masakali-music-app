@@ -84,7 +84,7 @@ export default function MasakaliHeader({
 
       {/* Right: Quick-Action Buttons (Download, Voice, Share, Support, Settings) */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* 0. Smart Download / Install App Button */}
+        {/* 0. Smart Install App Button */}
         {!isInstalled && onOpenDownload && (
           <button
             onClick={onOpenDownload}
@@ -93,11 +93,11 @@ export default function MasakaliHeader({
                 ? 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-200 hover:text-white'
                 : 'bg-zinc-100 border-zinc-200 hover:bg-zinc-200 text-zinc-800 hover:text-zinc-950'
             }`}
-            title="Download Masakali App (Android APK / 1-Tap Install)"
+            title="Install Masakali (Add to Home Screen)"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline font-bold">Download App</span>
-            <span className="sm:hidden font-bold text-[11px]">App</span>
+            <span className="hidden sm:inline font-bold">Install App</span>
+            <span className="sm:hidden font-bold text-[11px]">Install</span>
           </button>
         )}
 

@@ -1562,6 +1562,15 @@ export default function PlayerApp() {
             </div>
           )}
 
+          {/* Clear Footer Disclaimer for Google Safe Browsing / Fair Use */}
+          <footer className={`pt-10 pb-16 text-center text-xs transition-colors border-t mt-12 ${
+            isDark ? 'border-zinc-900 text-zinc-500' : 'border-zinc-200 text-zinc-400'
+          }`}>
+            <p className="max-w-xl mx-auto px-4 leading-relaxed text-[11px]">
+              Masakali is an educational open-source audio player interface. All media belongs to respective owners.
+            </p>
+          </footer>
+
         </main>
       </div>
 
