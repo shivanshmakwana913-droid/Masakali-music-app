@@ -3,7 +3,28 @@
 
 import { mockTracks } from '../data/mockTracks';
 
-const API_BASE = 'http://localhost:5000/api';
+// Dynamic API_BASE resolution:
+// Connects to Render backend (https://masakali-music-app.onrender.com/api) when running on Vercel,
+// or http://localhost:5000/api during local development.
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5000/api';
+    }
+    if (host.includes('onrender.com')) {
+      return '/api';
+    }
+    // Remote client deployment (e.g. https://masakalimusicapp.vercel.app/)
+    return 'https://masakali-music-app.onrender.com/api';
+  }
+  return 'http://localhost:5000/api';
+};
+
+export const API_BASE = getApiBase();
 
 // Soft-blurred, dreamy monochrome/frosted Masakali Dove + Musical Note cover art fallback (zero network overhead, 0ms load, zero grey ... boxes)
 export const FALLBACK_COVER_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
@@ -92,7 +113,12 @@ export function getHighResThumbnail(url, videoId) {
     return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
   }
 
-  // 4. Unsplash HD upgrade: ensure minimum 800px width
+  // 4. JioSaavn HD thumbnail upgrade: upgrade 150x150 or 50x50 to 500x500 HD
+  if (u.includes('saavncdn.com')) {
+    return u.replace(/(150x150|50x50)\.jpg/i, '500x500.jpg');
+  }
+
+  // 5. Unsplash HD upgrade: ensure minimum 800px width
   if (u.includes('unsplash.com')) {
     return u.replace(/w=\d+/, 'w=800');
   }

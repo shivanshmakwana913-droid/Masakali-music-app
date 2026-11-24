@@ -30,6 +30,49 @@ try {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Explicit CORS Middleware (allows Vercel, localhost, mobile webview, and cross-origin audio streaming)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Range', 'Accept-Ranges', 'Content-Type', 'Authorization', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'Content-Type']
+}));
+app.options('*', cors());
+app.use(express.json());
+
+// Public Base URL helper for generating reliable stream links on Render or local
+function getPublicBaseUrl(req) {
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, '');
+  }
+  if (process.env.PUBLIC_URL) {
+    return process.env.PUBLIC_URL.replace(/\/+$/, '');
+  }
+  if (req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    if (host) return `${proto}://${host}`;
+  }
+  return `http://localhost:${PORT}`;
+}
+
+// In-memory cache for JioSaavn encrypted/direct media URLs
+const saavnMediaCache = new Map();
+
+// Helper to decode HTML entities from API responses
+function cleanHtmlEntities(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .trim();
+}
+
 // Initialize Ytdl client for robust, zero-cipher audio streaming
 const ytdl = new Ytdl();
 
@@ -166,16 +209,6 @@ function sanitizeTrackInfo(rawTitle, rawArtist) {
   return { title, artist };
 }
 
-// Enable full CORS & Media Streaming headers for Web Audio API & HTML5 Audio
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Range', 'Accept-Ranges', 'Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'Content-Type']
-}));
-
-app.use(express.json());
-
 let yt = null;
 
 // Initialize YouTube Innertube client singleton for search
@@ -244,6 +277,180 @@ function getHighResThumbnail(url, videoId) {
   }
 
   return u;
+}
+
+// Piped Public API mirrors for resilient zero-block search fallback
+const PIPED_SEARCH_MIRRORS = [
+  'https://api.piped.private.coffee',
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.tokhmi.xyz',
+  'https://cf.pipedapi.tokhmi.xyz',
+  'https://piped-api.lunar.icu'
+];
+
+async function searchPipedMirrors(query, req) {
+  const baseUrl = getPublicBaseUrl(req);
+  for (const mirror of PIPED_SEARCH_MIRRORS) {
+    try {
+      const pUrl = `${mirror}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+      const res = await fetch(pUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const items = data.items || [];
+        if (items.length > 0) {
+          const tracks = items
+            .filter(item => item.url && (item.type === 'stream' || item.duration > 0))
+            .slice(0, 20)
+            .map(item => {
+              const videoId = (item.url.match(/[?&]v=([^&]+)/) || [])[1] || item.url.replace('/watch?v=', '');
+              const duration = item.duration || 180;
+              const cover = item.thumbnail || getHighResThumbnail(null, videoId);
+              return {
+                id: videoId,
+                title: cleanHtmlEntities(item.title || 'Untitled Track'),
+                artist: cleanHtmlEntities(item.uploaderName || 'Various Artists'),
+                album: 'YouTube Music',
+                duration,
+                durationFormatted: formatDuration(duration),
+                cover,
+                thumbnail: cover,
+                audioUrl: `${baseUrl}/api/stream/${videoId}`,
+                directAudioUrl: null,
+                source: 'piped',
+                genre: 'Song',
+                tags: ['Music', 'Piped HQ'],
+                lyrics: []
+              };
+            });
+          if (tracks.length > 0) {
+            console.log(`[Piped] Found ${tracks.length} tracks via ${mirror}`);
+            return tracks;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+  return [];
+}
+
+async function searchJioSaavn(query, req) {
+  const baseUrl = getPublicBaseUrl(req);
+
+  // 1. Primary: Official JioSaavn v4 API
+  try {
+    const jioUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=20&p=1&q=${encodeURIComponent(query)}`;
+    const res = await fetch(jioUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      signal: AbortSignal.timeout(4000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const rawResults = data.results || [];
+      if (rawResults.length > 0) {
+        const tracks = rawResults.map(s => {
+          const trackId = `saavn_${s.id}`;
+          const title = cleanHtmlEntities(s.title || s.song || 'Untitled');
+          const artist = cleanHtmlEntities(s.more_info?.singers || s.subtitle || 'Various Artists');
+          const album = cleanHtmlEntities(s.more_info?.album || 'Single');
+          const duration = parseInt(s.more_info?.duration || s.duration, 10) || 180;
+          const cover = (s.image || '').replace(/(150x150|50x50)\.jpg/, '500x500.jpg') || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
+          const encUrl = s.more_info?.encrypted_media_url || s.encrypted_media_url;
+
+          saavnMediaCache.set(trackId, {
+            encUrl,
+            title,
+            artist,
+            duration
+          });
+
+          return {
+            id: trackId,
+            title,
+            artist,
+            album,
+            duration,
+            durationFormatted: formatDuration(duration),
+            cover,
+            thumbnail: cover,
+            audioUrl: `${baseUrl}/api/stream/${trackId}`,
+            directAudioUrl: null,
+            source: 'jiosaavn',
+            genre: 'Song',
+            tags: ['Music', 'JioSaavn HQ'],
+            lyrics: []
+          };
+        });
+
+        console.log(`[JioSaavn] Found ${tracks.length} tracks via official API`);
+        return tracks;
+      }
+    }
+  } catch (err) {
+    console.warn('[JioSaavn] Official search error, trying community mirror:', err.message);
+  }
+
+  // 2. Secondary: Community API mirror (saavn.dev or vercel mirror)
+  const communityMirrors = [
+    `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=20`,
+    `https://jiosaavn-api-lemon.vercel.app/api/search/songs?query=${encodeURIComponent(query)}`
+  ];
+  for (const cUrl of communityMirrors) {
+    try {
+      const cRes = await fetch(cUrl, { signal: AbortSignal.timeout(3000) });
+      if (cRes.ok) {
+        const cJson = await cRes.json();
+        const results = cJson.data?.results || cJson.data || [];
+        if (Array.isArray(results) && results.length > 0) {
+          const tracks = results.map(s => {
+            const trackId = `saavn_${s.id}`;
+            const title = cleanHtmlEntities(s.name || s.title || 'Untitled');
+            const artist = cleanHtmlEntities(s.primaryArtists || s.artists?.primary?.map(a => a.name).join(', ') || 'Various Artists');
+            const album = cleanHtmlEntities(s.album?.name || s.album || 'Single');
+            const duration = parseInt(s.duration, 10) || 180;
+            const cover = Array.isArray(s.image) ? (s.image[s.image.length - 1]?.link || s.image[0]?.link) : (s.image || '');
+            let directAudioUrl = null;
+            if (Array.isArray(s.downloadUrl)) {
+              const best = s.downloadUrl.find(d => d.quality === '320kbps') || s.downloadUrl.find(d => d.quality === '160kbps') || s.downloadUrl[s.downloadUrl.length - 1];
+              directAudioUrl = best?.link || best?.url || null;
+            }
+
+            saavnMediaCache.set(trackId, {
+              directUrl: directAudioUrl,
+              title,
+              artist,
+              duration
+            });
+
+            return {
+              id: trackId,
+              title,
+              artist,
+              album,
+              duration,
+              durationFormatted: formatDuration(duration),
+              cover,
+              thumbnail: cover,
+              audioUrl: `${baseUrl}/api/stream/${trackId}`,
+              directAudioUrl,
+              source: 'jiosaavn',
+              genre: 'Song',
+              tags: ['Music', 'JioSaavn HQ'],
+              lyrics: []
+            };
+          });
+          if (tracks.length > 0) return tracks;
+        }
+      }
+    } catch (_) {}
+  }
+
+  return [];
 }
 
 // 1. Health & Status Check
@@ -391,6 +598,7 @@ app.get('/api/search', async (req, res) => {
 
         const album = item.album?.name || 'YouTube Music';
 
+        const baseUrl = getPublicBaseUrl(req);
         results.push({
           id: videoId,
           title,
@@ -399,7 +607,9 @@ app.get('/api/search', async (req, res) => {
           duration: durationSeconds,
           durationFormatted,
           cover,
-          audioUrl: `http://localhost:${PORT}/api/stream/${videoId}`,
+          thumbnail: cover,
+          audioUrl: `${baseUrl}/api/stream/${videoId}`,
+          directAudioUrl: null,
           source: 'youtube',
           genre: 'Song',
           tags: ['Music', 'HQ Audio'],
@@ -413,7 +623,27 @@ app.get('/api/search', async (req, res) => {
     let tracks = await searchMusicTracks(query);
     let correctedQuery = null;
 
-    // Smart typo fallback: if query returned 0 results, check suggestions and retry with top suggestion
+    // 1. Multi-Source Search Fallback (Render cloud IP protection)
+    // If YouTube returned 0 results (often blocked on cloud data centers), fall back to Piped & JioSaavn
+    if (tracks.length === 0) {
+      console.log(`[Search] YouTube returned 0 tracks for "${query}", trying Piped public mirrors...`);
+      try {
+        tracks = await searchPipedMirrors(query, req);
+      } catch (pErr) {
+        console.warn('Piped search fallback error:', pErr.message);
+      }
+    }
+
+    if (tracks.length === 0) {
+      console.log(`[Search] Piped returned 0 tracks for "${query}", trying JioSaavn search API...`);
+      try {
+        tracks = await searchJioSaavn(query, req);
+      } catch (jErr) {
+        console.warn('JioSaavn search fallback error:', jErr.message);
+      }
+    }
+
+    // 2. Smart typo fallback: if query still returned 0 results, check suggestions and retry
     if (tracks.length === 0) {
       try {
         let suggestions = [];
@@ -434,6 +664,12 @@ app.get('/api/search', async (req, res) => {
           if (top && top.toLowerCase() !== query.toLowerCase()) {
             console.log(`Auto-correcting typo "${query}" -> "${top}"`);
             tracks = await searchMusicTracks(top);
+            if (tracks.length === 0) {
+              tracks = await searchPipedMirrors(top, req);
+            }
+            if (tracks.length === 0) {
+              tracks = await searchJioSaavn(top, req);
+            }
             if (tracks.length > 0) {
               correctedQuery = top;
             }
@@ -451,13 +687,30 @@ app.get('/api/search', async (req, res) => {
       tracks: tracks.slice(0, 25)
     });
   } catch (error) {
-    console.error('Search error:', error);
+    console.warn(`[Search] Primary search error for "${query}" (${error.message}), attempting fallback mirrors...`);
+    try {
+      let fallbackTracks = await searchPipedMirrors(query, req);
+      if (fallbackTracks.length === 0) {
+        fallbackTracks = await searchJioSaavn(query, req);
+      }
+      if (fallbackTracks.length > 0) {
+        return res.json({
+          query,
+          correctedQuery: null,
+          count: fallbackTracks.length,
+          tracks: fallbackTracks.slice(0, 25)
+        });
+      }
+    } catch (fbErr) {
+      console.error('[Search] All search fallbacks failed:', fbErr.message);
+    }
     res.status(500).json({ error: 'Search failed', details: error.message });
   }
 });
 
 // 3. Trending Now endpoint (/api/trending)
 app.get('/api/trending', async (req, res) => {
+  const baseUrl = getPublicBaseUrl(req);
   try {
     const searchRes = await ytdl.search('top trending songs global hits');
     const items = searchRes?.items || searchRes || [];
@@ -478,7 +731,9 @@ app.get('/api/trending', async (req, res) => {
         duration: durationSeconds,
         durationFormatted,
         cover,
-        audioUrl: `http://localhost:${PORT}/api/stream/${item.id}`,
+        thumbnail: cover,
+        audioUrl: `${baseUrl}/api/stream/${item.id}`,
+        directAudioUrl: null,
         source: 'youtube',
         genre: 'Trending',
         tags: ['Trending', 'Top Hit'],
@@ -486,47 +741,59 @@ app.get('/api/trending', async (req, res) => {
       };
     }).filter(t => t.id);
 
-    res.json({
-      count: tracks.length,
-      tracks
-    });
-  } catch (error) {
-    console.warn('Trending search error, fallback to general search:', error.message);
-    try {
-      const client = await getYouTubeClient();
-      const searchRes = await client.search('trending music hits');
-      const videoItems = searchRes.videos || searchRes.results || [];
-      const tracks = videoItems.slice(0, 16).map((item) => {
-        const videoId = item.id || item.video_id;
-        const durationSeconds = item.duration?.seconds || 180;
-        const rawCover = item.thumbnails?.[0]?.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80';
-        const cover = getHighResThumbnail(rawCover, videoId);
-        return {
-          id: videoId,
-          title: item.title?.text || item.title || 'Trending Song',
-          artist: item.author?.name || 'Various Artists',
-          album: 'Trending',
-          duration: durationSeconds,
-          durationFormatted: formatDuration(durationSeconds),
-          cover,
-          audioUrl: `http://localhost:${PORT}/api/stream/${videoId}`,
-          source: 'youtube',
-          genre: 'Trending',
-          tags: ['Trending'],
-          lyrics: []
-        };
-      }).filter(t => t.id);
-
-      res.json({ count: tracks.length, tracks });
-    } catch (fallbackErr) {
-      res.status(500).json({ error: 'Failed to fetch trending', details: fallbackErr.message });
+    if (tracks.length > 0) {
+      return res.json({ count: tracks.length, tracks });
     }
+  } catch (error) {
+    console.warn('Trending search error, attempting JioSaavn / Piped fallback:', error.message);
+  }
+
+  // Fallback 1: JioSaavn trending hits
+  try {
+    const jioTrending = await searchJioSaavn('trending hindi songs top hits', req);
+    if (jioTrending.length > 0) {
+      return res.json({ count: jioTrending.length, tracks: jioTrending.slice(0, 16) });
+    }
+  } catch (_) {}
+
+  // Fallback 2: General Innertube search
+  try {
+    const client = await getYouTubeClient();
+    const searchRes = await client.search('trending music hits');
+    const videoItems = searchRes.videos || searchRes.results || [];
+    const tracks = videoItems.slice(0, 16).map((item) => {
+      const videoId = item.id || item.video_id;
+      const durationSeconds = item.duration?.seconds || 180;
+      const rawCover = item.thumbnails?.[0]?.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80';
+      const cover = getHighResThumbnail(rawCover, videoId);
+      return {
+        id: videoId,
+        title: item.title?.text || item.title || 'Trending Song',
+        artist: item.author?.name || 'Various Artists',
+        album: 'Trending',
+        duration: durationSeconds,
+        durationFormatted: formatDuration(durationSeconds),
+        cover,
+        thumbnail: cover,
+        audioUrl: `${baseUrl}/api/stream/${videoId}`,
+        directAudioUrl: null,
+        source: 'youtube',
+        genre: 'Trending',
+        tags: ['Trending'],
+        lyrics: []
+      };
+    }).filter(t => t.id);
+
+    res.json({ count: tracks.length, tracks });
+  } catch (fallbackErr) {
+    res.status(500).json({ error: 'Failed to fetch trending', details: fallbackErr.message });
   }
 });
 
 // 4. Smart Related Auto-Play endpoint (/api/related)
 app.get('/api/related', async (req, res) => {
   const { videoId, title, artist } = req.query;
+  const baseUrl = getPublicBaseUrl(req);
 
   if (!videoId && !title) {
     return res.status(400).json({ error: 'videoId or title query parameter is required' });
@@ -571,7 +838,7 @@ app.get('/api/related', async (req, res) => {
       }
     }
 
-    const tracks = relatedItems
+    let tracks = relatedItems
       .filter((item) => item.id && item.id !== videoId)
       .slice(0, 15)
       .map((item) => {
@@ -589,13 +856,24 @@ app.get('/api/related', async (req, res) => {
           duration: durationSeconds,
           durationFormatted: formatDuration(durationSeconds),
           cover,
-          audioUrl: `http://localhost:${PORT}/api/stream/${item.id}`,
+          thumbnail: cover,
+          audioUrl: `${baseUrl}/api/stream/${item.id}`,
+          directAudioUrl: null,
           source: 'youtube',
           genre: 'Related Mix',
           tags: ['Smart Auto-Play', 'Related'],
           lyrics: []
         };
       });
+
+    // Cloud IP Fallback: If YouTube returned 0 related tracks, search JioSaavn
+    if (tracks.length === 0) {
+      try {
+        const fallbackQuery = artist ? `${artist} songs` : `${title}`;
+        const jioRelated = await searchJioSaavn(fallbackQuery, req);
+        tracks = jioRelated.filter(t => t.id !== videoId).slice(0, 15);
+      } catch (_) {}
+    }
 
     res.json({
       targetVideoId: videoId,
@@ -647,9 +925,81 @@ async function getStreamFormat(videoId, songTitle = '') {
     return cached;
   }
 
-  const client = await getYouTubeClient();
+  // 2. Check if track is a JioSaavn track (prefixed with saavn_ or stored in saavnMediaCache)
+  if (videoId.startsWith('saavn_') || saavnMediaCache.has(videoId)) {
+    const rawId = videoId.replace(/^saavn_/, '');
+    let saavnMeta = saavnMediaCache.get(videoId) || saavnMediaCache.get(rawId);
 
-  // 2. Innertube clients in order: IOS -> TV_EMBEDDED -> ANDROID
+    // If not cached in RAM, fetch song details from JioSaavn
+    if (!saavnMeta || (!saavnMeta.directUrl && !saavnMeta.encUrl)) {
+      try {
+        const detailsRes = await fetch(`https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0%3F_marker%3D0&_format=json&pids=${rawId}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(3500)
+        });
+        if (detailsRes.ok) {
+          const dJson = await detailsRes.json();
+          const obj = dJson[rawId] || dJson[Object.keys(dJson)[0]];
+          if (obj) {
+            saavnMeta = {
+              encUrl: obj.encrypted_media_url,
+              title: cleanHtmlEntities(obj.song),
+              artist: cleanHtmlEntities(obj.primary_artists),
+              duration: parseInt(obj.duration, 10) || 180
+            };
+            saavnMediaCache.set(videoId, saavnMeta);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch JioSaavn song details:', err.message);
+      }
+    }
+
+    if (saavnMeta?.directUrl) {
+      const result = {
+        url: saavnMeta.directUrl,
+        contentLength: 4500000,
+        mimeType: 'audio/mp4',
+        itag: 140,
+        bitrate: 320000,
+        isSaavn: true,
+        expiresAt: Date.now() + STREAM_CACHE_TTL
+      };
+      streamUrlCache.set(videoId, result);
+      return result;
+    }
+
+    if (saavnMeta?.encUrl) {
+      try {
+        const tokenUrl = `https://www.jiosaavn.com/api.php?bitrate=320&api_version=4&_format=json&ctx=web6dot0&_marker=0&__call=song.generateAuthToken&url=${encodeURIComponent(saavnMeta.encUrl)}`;
+        const tokenRes = await fetch(tokenUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(4000)
+        });
+        if (tokenRes.ok) {
+          const tokenJson = await tokenRes.json();
+          if (tokenJson.auth_url) {
+            const result = {
+              url: tokenJson.auth_url,
+              contentLength: 6000000,
+              mimeType: 'audio/mp4',
+              itag: 140,
+              bitrate: 320000,
+              isSaavn: true,
+              expiresAt: Date.now() + STREAM_CACHE_TTL
+            };
+            streamUrlCache.set(videoId, result);
+            return result;
+          }
+        }
+      } catch (tokenErr) {
+        console.warn('JioSaavn generateAuthToken error:', tokenErr.message);
+      }
+    }
+  }
+
+  // 3. Innertube clients in order: IOS -> TV_EMBEDDED -> ANDROID
+  const client = await getYouTubeClient();
   if (client) {
     const clientsToTry = ['IOS', 'TV_EMBEDDED', 'ANDROID'];
     for (const c of clientsToTry) {
@@ -667,6 +1017,7 @@ async function getStreamFormat(videoId, songTitle = '') {
             mimeType,
             itag: best.itag,
             bitrate: best.bitrate,
+            isSaavn: false,
             expiresAt: Date.now() + STREAM_CACHE_TTL
           };
 
@@ -684,10 +1035,10 @@ async function getStreamFormat(videoId, songTitle = '') {
     }
   }
 
-  // 3. Fallback: Public Piped instances
+  // 4. Fallback: Public Piped instances
   const pipedInstances = [
-    'https://pipedapi.kavin.rocks',
     'https://api.piped.private.coffee',
+    'https://pipedapi.kavin.rocks',
     'https://piped-api.lunar.icu'
   ];
   for (const instance of pipedInstances) {
@@ -709,6 +1060,7 @@ async function getStreamFormat(videoId, songTitle = '') {
               mimeType: best.mimeType || 'audio/mp4',
               itag: 140,
               bitrate: best.bitrate || 128000,
+              isSaavn: false,
               expiresAt: Date.now() + STREAM_CACHE_TTL
             };
             if (streamUrlCache.size >= 500) {
@@ -723,36 +1075,51 @@ async function getStreamFormat(videoId, songTitle = '') {
     } catch (_) {}
   }
 
-  // 4. Fallback: JioSaavn Search by song title (if title provided)
+  // 5. Ultimate Cloud IP Fallback: JioSaavn Search by Title
+  // When hosted on Render cloud IP, YouTube blocks Innertube with 403 or bot detection.
+  // We seamlessly fall back to JioSaavn by song title so the track ALWAYS plays!
   if (songTitle && songTitle.trim()) {
     try {
-      const saavnRes = await fetch(`https://saavn.me/search/songs?query=${encodeURIComponent(songTitle)}&limit=1`, {
-        signal: AbortSignal.timeout(3000)
+      console.log(`[Stream Fallback] Searching JioSaavn for "${songTitle}" on cloud IP...`);
+      const jioSearchUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=3&p=1&q=${encodeURIComponent(songTitle)}`;
+      const sRes = await fetch(jioSearchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        signal: AbortSignal.timeout(3500)
       });
-      if (saavnRes.ok) {
-        const sData = await saavnRes.json();
-        const candidate = sData?.data?.results?.[0];
-        if (candidate?.downloadUrl && Array.isArray(candidate.downloadUrl)) {
-          const bestDl = candidate.downloadUrl.find(d => d.quality === '160kbps') || candidate.downloadUrl[candidate.downloadUrl.length - 1];
-          if (bestDl?.link) {
-            const result = {
-              url: bestDl.link,
-              contentLength: 4000000,
-              mimeType: 'audio/mp4',
-              itag: 140,
-              bitrate: 160000,
-              expiresAt: Date.now() + STREAM_CACHE_TTL
-            };
-            if (streamUrlCache.size >= 500) {
-              const oldestKey = streamUrlCache.keys().next().value;
-              streamUrlCache.delete(oldestKey);
+      if (sRes.ok) {
+        const sJson = await sRes.json();
+        const candidate = sJson.results?.[0];
+        const encUrl = candidate?.more_info?.encrypted_media_url;
+        if (encUrl) {
+          const tokenUrl = `https://www.jiosaavn.com/api.php?bitrate=320&api_version=4&_format=json&ctx=web6dot0&_marker=0&__call=song.generateAuthToken&url=${encodeURIComponent(encUrl)}`;
+          const tokenRes = await fetch(tokenUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            signal: AbortSignal.timeout(3500)
+          });
+          if (tokenRes.ok) {
+            const tokenJson = await tokenRes.json();
+            if (tokenJson.auth_url) {
+              const result = {
+                url: tokenJson.auth_url,
+                contentLength: 6000000,
+                mimeType: 'audio/mp4',
+                itag: 140,
+                bitrate: 320000,
+                isSaavn: true,
+                expiresAt: Date.now() + STREAM_CACHE_TTL
+              };
+              streamUrlCache.set(videoId, result);
+              return result;
             }
-            streamUrlCache.set(videoId, result);
-            return result;
           }
         }
       }
-    } catch (_) {}
+    } catch (jioErr) {
+      console.warn('JioSaavn title stream fallback failed:', jioErr.message);
+    }
   }
 
   throw new Error('No playable audio stream format found');
@@ -826,10 +1193,16 @@ app.all('/api/stream/:videoId', async (req, res) => {
       abortController.abort();
     });
 
-    const upstreamHeaders = {
-      'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; en_US)',
-      'Accept': '*/*'
-    };
+    const upstreamHeaders = streamFormat.isSaavn
+      ? {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.jiosaavn.com/',
+          'Accept': '*/*'
+        }
+      : {
+          'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X; en_US)',
+          'Accept': '*/*'
+        };
     if (rangeHeader) {
       upstreamHeaders['Range'] = rangeHeader;
     }
@@ -839,13 +1212,21 @@ app.all('/api/stream/:videoId', async (req, res) => {
       signal: abortController.signal
     });
 
-    // If upstream returns 403 (e.g. expired or IP restriction), evict from cache and retry once
-    if (upstreamRes.status === 403) {
-      console.warn(`Upstream 403 on stream for ${videoId}. Evicting cache and re-fetching...`);
+    // If upstream returns 403 (e.g. YouTube blocked cloud IP), switch to JioSaavn fallback
+    if (upstreamRes.status === 403 && !streamFormat.isSaavn) {
+      console.warn(`Upstream 403 on stream for ${videoId}. Cloud IP restriction encountered. Falling back to JioSaavn stream...`);
       streamUrlCache.delete(videoId);
-      streamFormat = await getStreamFormat(videoId, songTitle);
+      streamFormat = await getStreamFormat(videoId, songTitle || req.query.title || '');
+      const retryHeaders = streamFormat.isSaavn
+        ? {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.jiosaavn.com/',
+            'Accept': '*/*'
+          }
+        : upstreamHeaders;
+      if (rangeHeader) retryHeaders['Range'] = rangeHeader;
       upstreamRes = await fetch(streamFormat.url, {
-        headers: upstreamHeaders,
+        headers: retryHeaders,
         signal: abortController.signal
       });
     }

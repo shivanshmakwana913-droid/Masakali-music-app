@@ -6,7 +6,7 @@ import {
   getAllOfflineTracks, 
   isTrackOffline 
 } from '../utils/offlineStorage';
-import { fetchRelatedTracks, warmTrack } from '../services/musicApi';
+import { fetchRelatedTracks, warmTrack, API_BASE } from '../services/musicApi';
 import { recordTrackPlay, recordListeningSeconds } from '../utils/musicStats';
 
 // 10-Band EQ Frequencies in Hertz
@@ -455,6 +455,14 @@ export function useAudioEngine(initialTracks = mockTracks) {
       audioRef.current.preload = 'auto';
 
       let targetAudioUrl = track.audioUrl;
+      // Seamlessly resolve remote Render stream URL when running on Vercel or cloud web host
+      if (targetAudioUrl && typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        if (targetAudioUrl.includes('localhost:5000/api')) {
+          targetAudioUrl = targetAudioUrl.replace(/https?:\/\/localhost:\d+\/api/, API_BASE);
+        } else if (targetAudioUrl.startsWith('/api/')) {
+          targetAudioUrl = `${API_BASE.replace(/\/api\/?$/, '')}${targetAudioUrl}`;
+        }
+      }
       // If it's our backend stream endpoint, append title query parameter for robust fallback
       if (targetAudioUrl && targetAudioUrl.includes('/api/stream/') && track.title && !targetAudioUrl.includes('title=')) {
         targetAudioUrl += (targetAudioUrl.includes('?') ? '&' : '?') + `title=${encodeURIComponent(track.title)}`;
