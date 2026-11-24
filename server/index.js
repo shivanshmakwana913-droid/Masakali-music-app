@@ -1,9 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import dns from 'node:dns';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { Innertube, UniversalCache } from 'youtubei.js';
 import { Ytdl } from '@distube/ytdl-core';
+
+// Resolve static dist directory for unified standalone 24/7 serving
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../dist');
 
 // Force IPv4 lookup first to prevent connect timeout errors on Windows
 try {
@@ -1041,6 +1048,19 @@ app.get('/api/lyrics', async (req, res) => {
     console.error('Lyrics error:', error);
     res.status(500).json({ error: 'Lyrics fetch failed', details: error.message });
   }
+});
+
+// Serve production frontend assets from dist (allows running 24/7 as a standalone unified service)
+app.use(express.static(distPath));
+
+// SPA catch-all fallback for client-side routing
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) next();
+  });
 });
 
 app.listen(PORT, () => {
