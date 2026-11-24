@@ -143,7 +143,7 @@ export function handleCoverImageError(e) {
  */
 export async function checkBackendStatus() {
   try {
-    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(1500) });
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const data = await res.json();
       return { online: true, engine: data.engine };
@@ -164,7 +164,7 @@ export async function searchMusic(query) {
 
   try {
     const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(10000)
     });
 
     if (res.ok) {
@@ -204,7 +204,7 @@ export async function fetchSearchSuggestions(query) {
 
   try {
     const res = await fetch(`${API_BASE}/suggest?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(2500)
+      signal: AbortSignal.timeout(3500)
     });
 
     if (res.ok) {
@@ -223,7 +223,7 @@ export async function fetchSearchSuggestions(query) {
  */
 export async function fetchTrendingMusic() {
   try {
-    const res = await fetch(`${API_BASE}/trending`, { signal: AbortSignal.timeout(4000) });
+    const res = await fetch(`${API_BASE}/trending`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -246,7 +246,7 @@ export async function fetchRelatedTracks(videoId, title, artist) {
     if (title) params.append('title', title);
     if (artist) params.append('artist', artist);
 
-    const res = await fetch(`${API_BASE}/related?${params.toString()}`, { signal: AbortSignal.timeout(4000) });
+    const res = await fetch(`${API_BASE}/related?${params.toString()}`, { signal: AbortSignal.timeout(7000) });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -301,7 +301,7 @@ export async function fetchLyrics(trackTitle, artist, duration = 0, trackId = nu
       url += `&videoId=${encodeURIComponent(vid)}`;
     }
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
 
     if (res.ok) {
       const data = await res.json();

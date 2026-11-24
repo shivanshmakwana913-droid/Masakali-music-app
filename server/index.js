@@ -318,16 +318,17 @@ async function searchPipedMirrors(query, req) {
               const videoId = (item.url.match(/[?&]v=([^&]+)/) || [])[1] || item.url.replace('/watch?v=', '');
               const duration = item.duration || 180;
               const cover = item.thumbnail || getHighResThumbnail(null, videoId);
+              const trackTitle = cleanHtmlEntities(item.title || 'Untitled Track');
               return {
                 id: videoId,
-                title: cleanHtmlEntities(item.title || 'Untitled Track'),
+                title: trackTitle,
                 artist: cleanHtmlEntities(item.uploaderName || 'Various Artists'),
                 album: 'YouTube Music',
                 duration,
                 durationFormatted: formatDuration(duration),
                 cover,
                 thumbnail: cover,
-                audioUrl: `${baseUrl}/api/stream/${videoId}`,
+                audioUrl: `${baseUrl}/api/stream/${videoId}?title=${encodeURIComponent(trackTitle)}`,
                 directAudioUrl: null,
                 source: 'piped',
                 genre: 'Song',
@@ -388,7 +389,7 @@ async function searchJioSaavn(query, req) {
             durationFormatted: formatDuration(duration),
             cover,
             thumbnail: cover,
-            audioUrl: `${baseUrl}/api/stream/${trackId}`,
+            audioUrl: `${baseUrl}/api/stream/${trackId}?title=${encodeURIComponent(title)}`,
             directAudioUrl: null,
             source: 'jiosaavn',
             genre: 'Song',
@@ -446,7 +447,7 @@ async function searchJioSaavn(query, req) {
               durationFormatted: formatDuration(duration),
               cover,
               thumbnail: cover,
-              audioUrl: `${baseUrl}/api/stream/${trackId}`,
+              audioUrl: `${baseUrl}/api/stream/${trackId}?title=${encodeURIComponent(title)}`,
               directAudioUrl,
               source: 'jiosaavn',
               genre: 'Song',
@@ -544,16 +545,17 @@ function normalizeYouTubeRawItems(rawItems, req) {
     }
     cover = getHighResThumbnail(cover, videoId);
 
+    const cleanTrackTitle = cleanHtmlEntities(title);
     results.push({
       id: videoId,
-      title: cleanHtmlEntities(title),
+      title: cleanTrackTitle,
       artist: cleanHtmlEntities(artist),
       album: item.album?.name || 'YouTube Music',
       duration: durationSeconds,
       durationFormatted,
       cover,
       thumbnail: cover,
-      audioUrl: `${baseUrl}/api/stream/${videoId}`,
+      audioUrl: `${baseUrl}/api/stream/${videoId}?title=${encodeURIComponent(cleanTrackTitle)}`,
       directAudioUrl: null,
       source: 'youtube',
       genre: 'Song',
@@ -657,7 +659,7 @@ app.get('/api/trending', async (req, res) => {
         durationFormatted,
         cover,
         thumbnail: cover,
-        audioUrl: `${baseUrl}/api/stream/${item.id}`,
+        audioUrl: `${baseUrl}/api/stream/${item.id}?title=${encodeURIComponent(item.title || 'Song')}`,
         directAudioUrl: null,
         source: 'youtube',
         genre: 'Trending',
@@ -684,16 +686,17 @@ app.get('/api/trending', async (req, res) => {
         const durationSeconds = item.duration?.seconds || 180;
         const rawCover = item.thumbnails?.[0]?.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800';
         const cover = getHighResThumbnail(rawCover, videoId);
+        const itemTitle = item.title?.text || item.title || 'Trending Song';
         return {
           id: videoId,
-          title: item.title?.text || item.title || 'Trending Song',
+          title: itemTitle,
           artist: item.author?.name || 'Various Artists',
           album: 'Trending',
           duration: durationSeconds,
           durationFormatted: formatDuration(durationSeconds),
           cover,
           thumbnail: cover,
-          audioUrl: `${baseUrl}/api/stream/${videoId}`,
+          audioUrl: `${baseUrl}/api/stream/${videoId}?title=${encodeURIComponent(itemTitle)}`,
           directAudioUrl: null,
           source: 'youtube',
           genre: 'Trending',
@@ -778,7 +781,7 @@ app.get('/api/related', async (req, res) => {
           durationFormatted: formatDuration(durationSeconds),
           cover,
           thumbnail: cover,
-          audioUrl: `${baseUrl}/api/stream/${item.id}`,
+          audioUrl: `${baseUrl}/api/stream/${item.id}?title=${encodeURIComponent(item.title || 'Song')}`,
           directAudioUrl: null,
           source: 'youtube',
           genre: 'Related Mix',
@@ -838,12 +841,35 @@ function pickFastAudioFormat(formats) {
   return scored[0].format;
 }
 
+// Resolve song title from YouTube oEmbed within 1.5s on cloud IPs where Innertube is blocked
+async function fetchOEmbedTitle(videoId) {
+  if (!videoId || videoId.startsWith('saavn_')) return '';
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(1500)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return cleanHtmlEntities(data.title || '');
+    }
+  } catch (_) {}
+  return '';
+}
+
 // Helper to resolve high-speed, direct audio stream format with multi-tier fallback & 2-hour in-memory caching
-async function getStreamFormat(videoId, songTitle = '') {
-  // 1. Check in-memory stream URL cache (2-hour TTL)
-  const cached = streamUrlCache.get(videoId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached;
+async function getStreamFormat(videoId, songTitle = '', skipInnertube = false) {
+  // If songTitle was not provided in query, fetch it via oEmbed in ~150ms for reliable cloud fallback
+  if (!songTitle && !videoId.startsWith('saavn_')) {
+    songTitle = await fetchOEmbedTitle(videoId);
+  }
+
+  // 1. Check in-memory stream URL cache (2-hour TTL) (only if not skipping Innertube/retrying)
+  if (!skipInnertube) {
+    const cached = streamUrlCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached;
+    }
   }
 
   // 2. Check if track is a JioSaavn track (prefixed with saavn_ or stored in saavnMediaCache)
@@ -919,13 +945,15 @@ async function getStreamFormat(videoId, songTitle = '') {
     }
   }
 
-  // 3. Innertube clients in order: IOS -> TV_EMBEDDED -> ANDROID
-  const client = await getYouTubeClient();
+  // 3. Innertube clients in order: IOS -> TV_EMBEDDED -> ANDROID with 1.5s timeout per client
+  const client = skipInnertube ? null : await getYouTubeClient();
   if (client) {
     const clientsToTry = ['IOS', 'TV_EMBEDDED', 'ANDROID'];
     for (const c of clientsToTry) {
       try {
-        const info = await client.getInfo(videoId, { client: c });
+        const infoPromise = client.getInfo(videoId, { client: c });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('YT getInfo timeout')), 1500));
+        const info = await Promise.race([infoPromise, timeoutPromise]);
         const formats = info.streaming_data?.adaptive_formats || [];
         const best = pickFastAudioFormat(formats);
 
@@ -957,43 +985,45 @@ async function getStreamFormat(videoId, songTitle = '') {
   }
 
   // 4. Fallback: Public Piped instances
-  const pipedInstances = [
-    'https://api.piped.private.coffee',
-    'https://pipedapi.kavin.rocks',
-    'https://piped-api.lunar.icu'
-  ];
-  for (const instance of pipedInstances) {
-    try {
-      const pRes = await fetch(`${instance}/streams/${videoId}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        signal: AbortSignal.timeout(3000)
-      });
-      if (pRes.ok) {
-        const pData = await pRes.json();
-        const audioStreams = pData.audioStreams || [];
-        if (audioStreams.length > 0) {
-          const sorted = audioStreams.filter(s => s.url).sort((a, b) => Math.abs((a.bitrate || 128000) - 128000) - Math.abs((b.bitrate || 128000) - 128000));
-          const best = sorted[0];
-          if (best && best.url) {
-            const result = {
-              url: best.url,
-              contentLength: best.contentLength || 3500000,
-              mimeType: best.mimeType || 'audio/mp4',
-              itag: 140,
-              bitrate: best.bitrate || 128000,
-              isSaavn: false,
-              expiresAt: Date.now() + STREAM_CACHE_TTL
-            };
-            if (streamUrlCache.size >= 500) {
-              const oldestKey = streamUrlCache.keys().next().value;
-              streamUrlCache.delete(oldestKey);
+  if (!skipInnertube) {
+    const pipedInstances = [
+      'https://api.piped.private.coffee',
+      'https://pipedapi.kavin.rocks',
+      'https://piped-api.lunar.icu'
+    ];
+    for (const instance of pipedInstances) {
+      try {
+        const pRes = await fetch(`${instance}/streams/${videoId}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(3000)
+        });
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          const audioStreams = pData.audioStreams || [];
+          if (audioStreams.length > 0) {
+            const sorted = audioStreams.filter(s => s.url).sort((a, b) => Math.abs((a.bitrate || 128000) - 128000) - Math.abs((b.bitrate || 128000) - 128000));
+            const best = sorted[0];
+            if (best && best.url) {
+              const result = {
+                url: best.url,
+                contentLength: best.contentLength || 3500000,
+                mimeType: best.mimeType || 'audio/mp4',
+                itag: 140,
+                bitrate: best.bitrate || 128000,
+                isSaavn: false,
+                expiresAt: Date.now() + STREAM_CACHE_TTL
+              };
+              if (streamUrlCache.size >= 500) {
+                const oldestKey = streamUrlCache.keys().next().value;
+                streamUrlCache.delete(oldestKey);
+              }
+              streamUrlCache.set(videoId, result);
+              return result;
             }
-            streamUrlCache.set(videoId, result);
-            return result;
           }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
   }
 
   // 5. Ultimate Cloud IP Fallback: JioSaavn Search by Title
@@ -1137,7 +1167,8 @@ app.all('/api/stream/:videoId', async (req, res) => {
     if (upstreamRes.status === 403 && !streamFormat.isSaavn) {
       console.warn(`Upstream 403 on stream for ${videoId}. Cloud IP restriction encountered. Falling back to JioSaavn stream...`);
       streamUrlCache.delete(videoId);
-      streamFormat = await getStreamFormat(videoId, songTitle || req.query.title || '');
+      const fallbackTitle = songTitle || req.query.title || (await fetchOEmbedTitle(videoId));
+      streamFormat = await getStreamFormat(videoId, fallbackTitle, true);
       const retryHeaders = streamFormat.isSaavn
         ? {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
