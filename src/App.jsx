@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { Analytics } from '@vercel/analytics/react';
 import PlayerApp from './pages/PlayerApp';
 import SplashLoader from './components/common/SplashLoader';
 
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AppContent />
+      <Analytics />
     </ThemeProvider>
   );
 }
