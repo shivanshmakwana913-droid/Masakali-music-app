@@ -7,6 +7,7 @@ import {
   FolderOpen, Share2, BarChart2, Trash2, Zap, Moon
 } from 'lucide-react';
 import { useAudioEngine } from '../hooks/useAudioEngine';
+import { useBackNavigation } from '../hooks/useBackNavigation';
 import {
   searchMusic,
   fetchLyrics,
@@ -138,6 +139,25 @@ export default function PlayerApp() {
   // PWA & Native App Installation
   const { canInstall, isInstalled, isIOS, isAndroid, promptInstall } = useInstallPrompt();
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+
+  // Mobile Hardware / Browser Back Button Navigation & Double-Back Exit Protection
+  useBackNavigation({
+    views: [
+      { id: 'support', isOpen: isSupportModalOpen, close: () => setIsSupportModalOpen(false) },
+      { id: 'download', isOpen: isDownloadModalOpen, close: () => setIsDownloadModalOpen(false) },
+      { id: 'stats', isOpen: isStatsOpen, close: () => setIsStatsOpen(false) },
+      { id: 'lyric-card', isOpen: isLyricCardOpen, close: () => setIsLyricCardOpen(false) },
+      { id: 'clipper', isOpen: !!clipperTrack, close: () => setClipperTrack(null) },
+      { id: 'action-sheet', isOpen: !!actionTrack, close: () => setActionTrack(null) },
+      { id: 'settings', isOpen: isSettingsOpen, close: () => setIsSettingsOpen(false) },
+      { id: 'studio', isOpen: isStudioOpen, close: () => setIsStudioOpen(false) },
+      { id: 'lyrics', isOpen: isLyricsOpen, close: () => setIsLyricsOpen(false) },
+      { id: 'queue', isOpen: isQueueOpen, close: () => setIsQueueOpen(false) },
+      { id: 'fullscreen-player', isOpen: isFullScreenOpen, close: () => setIsFullScreenOpen(false) },
+      { id: 'tab-nav', isOpen: currentTab !== 'home', close: () => setCurrentTab('home') }
+    ],
+    onExitPrompt: (msg) => engine.showToast && engine.showToast(msg)
+  });
 
   const handleOpenDownload = async () => {
     if (canInstall) {
