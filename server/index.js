@@ -810,6 +810,163 @@ app.get('/api/related', async (req, res) => {
   }
 });
 
+// 4b. Smart Vibe-Matched Next-Mix endpoint (/api/next-mix)
+// Combines yt.music.getUpNext(videoId) with artist+mood candidates, deduplicates, and returns top 10 ranked tracks
+app.get('/api/next-mix', async (req, res) => {
+  const { videoId, title, artist, mood } = req.query;
+  const baseUrl = getPublicBaseUrl(req);
+
+  if (!videoId && !title && !artist) {
+    return res.status(400).json({ error: 'videoId, title, or artist query parameter is required' });
+  }
+
+  // Infer mood keyword from query or title if not explicitly passed
+  const inferredMood = mood || (() => {
+    const t = `${title || ''}`.toLowerCase();
+    if (/lo-?fi|slowed|reverb|chill/.test(t)) return 'lofi chill';
+    if (/sad|dard|heartbreak|unplugged/.test(t)) return 'sad acoustic';
+    if (/party|bass|dj|remix|dance|club/.test(t)) return 'party bass';
+    if (/romantic|love|ishq|pyar/.test(t)) return 'romantic hits';
+    if (/acoustic|guitar|piano/.test(t)) return 'acoustic unplugged';
+    if (/8d|spatial/.test(t)) return '8d audio';
+    return '';
+  })();
+
+  const normalizeTrack = (item, tagLabel = 'Up Next') => {
+    const id = item.id || item.video_id;
+    if (!id) return null;
+    const rawTitle = item.title?.text || item.title || 'Song';
+    if (BLOCKED_KEYWORDS_REGEX.test(rawTitle)) return null;
+
+    const rawArtist = (Array.isArray(item.artists) ? item.artists.map(a => a.name).join(', ') : item.author?.name) || artist || 'Various Artists';
+    const cleaned = sanitizeTrackInfo(rawTitle, rawArtist);
+    const finalTitle = cleaned.title || cleanHtmlEntities(rawTitle);
+    const finalArtist = cleaned.artist || cleanHtmlEntities(rawArtist);
+    const durationSeconds = item.duration?.seconds || item.lengthSeconds || 180;
+    const thumbs = item.thumbnail || item.thumbnails || [];
+    const rawCover = (Array.isArray(thumbs) ? (thumbs[thumbs.length - 1]?.url || thumbs[0]?.url) : thumbs?.url) || '';
+    const cover = getHighResThumbnail(rawCover, id);
+
+    return {
+      id,
+      title: finalTitle,
+      artist: finalArtist,
+      album: 'Smart Next-Mix',
+      duration: durationSeconds,
+      durationFormatted: formatDuration(durationSeconds),
+      cover,
+      thumbnail: cover,
+      audioUrl: `${baseUrl}/api/stream/${id}?title=${encodeURIComponent(finalTitle)}`,
+      directAudioUrl: null,
+      source: 'youtube',
+      genre: inferredMood ? inferredMood : 'Smart Radio',
+      tags: ['Smart Radio', tagLabel, ...(inferredMood ? [inferredMood] : [])],
+      lyrics: []
+    };
+  };
+
+  try {
+    const client = await getYouTubeClient();
+    const candidates = [];
+
+    if (client) {
+      const tasks = [];
+
+      // 1. Primary: yt.music.getUpNext(videoId) for authentic YouTube Music radio continuity
+      const isValidYtId = typeof videoId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+      if (isValidYtId && client.music && typeof client.music.getUpNext === 'function') {
+        tasks.push(
+          Promise.race([
+            client.music.getUpNext(videoId),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('getUpNext timeout')), 3000))
+          ])
+            .then((upNextRes) => {
+              const items = upNextRes?.contents || upNextRes?.playlist?.contents || [];
+              for (const item of items) {
+                const normalized = normalizeTrack(item, 'YT UpNext');
+                if (normalized) candidates.push({ track: normalized, sourceBoost: 20 });
+              }
+            })
+            .catch(() => {})
+        );
+      }
+
+      // 2. Artist + Mood search candidates
+      const cleanArtist = artist ? String(artist).split(/,|&|feat\.|ft\./i)[0].trim() : '';
+      const moodQuery = [cleanArtist, inferredMood || 'songs'].filter(Boolean).join(' ').trim();
+      if (moodQuery && client.music && typeof client.music.search === 'function') {
+        tasks.push(
+          Promise.race([
+            client.music.search(moodQuery, { type: 'song' }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('music search timeout')), 3000))
+          ])
+            .then((mRes) => {
+              const mItems = mRes?.songs?.contents || mRes?.contents?.[0]?.contents || [];
+              for (const item of mItems) {
+                const normalized = normalizeTrack(item, 'Artist Mood');
+                if (normalized) candidates.push({ track: normalized, sourceBoost: 10 });
+              }
+            })
+            .catch(() => {})
+        );
+      }
+
+      await Promise.allSettled(tasks);
+    }
+
+    // 3. Cloud IP / JioSaavn fallback if YouTube returned fewer than 6 candidates
+    if (candidates.length < 6) {
+      try {
+        const cleanArtist = artist ? String(artist).split(/,|&|feat\.|ft\./i)[0].trim() : '';
+        const fallbackQuery = [cleanArtist || title, inferredMood].filter(Boolean).join(' ').trim();
+        const jioTracks = await searchJioSaavn(fallbackQuery, req);
+        for (const jt of jioTracks) {
+          candidates.push({ track: jt, sourceBoost: 8 });
+        }
+      } catch (_) {}
+    }
+
+    // 4. Deduplicate by id & normalized title, exclude current videoId, and rank top 10
+    const seenIds = new Set();
+    const seenTitles = new Set();
+    if (videoId) seenIds.add(videoId);
+
+    const primaryArtistLower = (artist || '').split(/,|&|feat\.|ft\./i)[0].trim().toLowerCase();
+    const ranked = [];
+
+    for (const { track, sourceBoost } of candidates) {
+      if (!track?.id || seenIds.has(track.id)) continue;
+      const normTitle = (track.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normTitle && seenTitles.has(normTitle)) continue;
+
+      seenIds.add(track.id);
+      if (normTitle) seenTitles.add(normTitle);
+
+      let score = sourceBoost;
+      if (primaryArtistLower && (track.artist || '').toLowerCase().includes(primaryArtistLower)) {
+        score += 15;
+      }
+      if (inferredMood && `${track.title} ${track.genre}`.toLowerCase().includes(inferredMood.split(' ')[0])) {
+        score += 10;
+      }
+      ranked.push({ track, score });
+    }
+
+    ranked.sort((a, b) => b.score - a.score);
+    const top10 = ranked.slice(0, 10).map((r) => r.track);
+
+    res.json({
+      targetVideoId: videoId || null,
+      mood: inferredMood || null,
+      count: top10.length,
+      tracks: top10
+    });
+  } catch (error) {
+    console.error('Next-mix error:', error.message);
+    res.status(500).json({ error: 'Failed to build next-mix', details: error.message });
+  }
+});
+
 // Fast-load format selector: prioritizes 128kbps Opus/M4A (~96-160kbps) for instant <1s startup
 function pickFastAudioFormat(formats) {
   if (!formats || formats.length === 0) return null;

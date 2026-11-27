@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { mockTracks } from '../data/mockTracks';
 import { 
   saveTrackOffline, 
   removeOfflineTrack, 
   getAllOfflineTracks, 
   isTrackOffline 
 } from '../utils/offlineStorage';
-import { fetchRelatedTracks, warmTrack, API_BASE } from '../services/musicApi';
+import { fetchNextMix, fetchTrendingMusic, warmTrack, API_BASE } from '../services/musicApi';
 import { recordTrackPlay, recordListeningSeconds } from '../utils/musicStats';
+import { rankNextTracks, recordFullListen, recordEarlySkip } from '../utils/nextSongAlgo';
 
 // 10-Band EQ Frequencies in Hertz
 export const EQ_FREQUENCIES = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -21,7 +21,7 @@ export const EQ_PRESETS = {
   Rock: [5, 4, 2, -1, -2, 0, 2, 4, 5, 5]
 };
 
-export function useAudioEngine(initialTracks = mockTracks) {
+export function useAudioEngine(initialTracks = []) {
   const [tracks, setTracks] = useState(initialTracks);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -505,6 +505,31 @@ export function useAudioEngine(initialTracks = mockTracks) {
 
   // Proactive Auto-Mix Queue Filler: keeps Up-Next populated ahead of time
   const isFetchingAutoMixRef = useRef(false);
+  const songsSinceDiscoveryRef = useRef(0);
+  const trendingCacheRef = useRef([]);
+
+  const buildSmartMix = useCallback(async (baseTrack) => {
+    const [mixCandidates, trendingList] = await Promise.all([
+      fetchNextMix(baseTrack.id, baseTrack.title, baseTrack.artist),
+      trendingCacheRef.current.length > 0
+        ? Promise.resolve(trendingCacheRef.current)
+        : fetchTrendingMusic().catch(() => [])
+    ]);
+
+    if (Array.isArray(trendingList) && trendingList.length > 0) {
+      trendingCacheRef.current = trendingList;
+    }
+
+    return rankNextTracks({
+      currentTrack: baseTrack,
+      candidates: mixCandidates || [],
+      trendingCandidates: trendingCacheRef.current,
+      recentIds: playedHistoryIdsRef.current,
+      queueIds: queue.map((q) => q.id),
+      songsSinceDiscovery: songsSinceDiscoveryRef.current,
+      limit: 10
+    });
+  }, [queue]);
 
   const ensureAutoMixQueue = useCallback(async (baseTrack = currentTrack) => {
     if (!autoPlayRadio || !baseTrack || isFetchingAutoMixRef.current) return;
@@ -512,42 +537,47 @@ export function useAudioEngine(initialTracks = mockTracks) {
 
     isFetchingAutoMixRef.current = true;
     try {
-      const related = await fetchRelatedTracks(baseTrack.id, baseTrack.title, baseTrack.artist);
-      const fresh = (related || []).filter(
-        (t) => t.id !== baseTrack.id && 
-               !playedHistoryIdsRef.current.includes(t.id) &&
-               !queue.some((q) => q.id === t.id)
-      );
-      if (fresh.length > 0) {
-        setQueue((prev) => [...prev, ...fresh.slice(0, 4)]);
+      const ranked = await buildSmartMix(baseTrack);
+      if (ranked.length > 0) {
+        setQueue((prev) => {
+          const existingIds = new Set(prev.map((q) => q.id));
+          const fresh = ranked.filter((t) => !existingIds.has(t.id));
+          return [...prev, ...fresh.slice(0, 4)];
+        });
       }
     } catch (e) {
       console.warn('Auto-Mix queue fill error:', e.message);
     } finally {
       isFetchingAutoMixRef.current = false;
     }
-  }, [autoPlayRadio, currentTrack, queue]);
+  }, [autoPlayRadio, currentTrack, queue.length, buildSmartMix]);
 
-  // Next Track with Smart Auto-Mix Support
+  // Next Track with Smart Auto-Mix Support & Behavioral Early-Skip Tracking
   const handleNextTrack = useCallback(async () => {
+    // Record behavioral penalty (-4) if user skips before 12 seconds
+    if (currentTrack && currentTime > 0.5 && currentTime < 12) {
+      recordEarlySkip(currentTrack, currentTime);
+    }
+
     // 1. Pop from user Queue
     if (queue.length > 0) {
       const nextQueueTrack = queue[0];
+      songsSinceDiscoveryRef.current = nextQueueTrack.isDiscoveryPick ? 0 : (songsSinceDiscoveryRef.current + 1) % 4;
       setQueue((prev) => prev.slice(1));
       playTrack(nextQueueTrack);
       return;
     }
 
-    // 2. If queue is empty and autoPlayRadio is ON: fetch next matching song dynamically!
+    // 2. If queue is empty and autoPlayRadio is ON: fetch next vibe-matched song dynamically!
     if (autoPlayRadio && currentTrack) {
-      showToast('∞ Auto-Mix: Finding next matching track...');
+      showToast('∞ Auto-Mix: Finding next vibe-matched track...');
       try {
-        const related = await fetchRelatedTracks(currentTrack.id, currentTrack.title, currentTrack.artist);
-        const unplayed = (related || []).filter((t) => !playedHistoryIdsRef.current.includes(t.id));
-        const candidate = unplayed.length > 0 ? unplayed[0] : (related && related[0]);
+        const ranked = await buildSmartMix(currentTrack);
+        const candidate = ranked[0];
 
         if (candidate) {
-          const nextInLine = (unplayed.length > 1 ? unplayed : related).slice(1, 5);
+          songsSinceDiscoveryRef.current = candidate.isDiscoveryPick ? 0 : (songsSinceDiscoveryRef.current + 1) % 4;
+          const nextInLine = ranked.slice(1, 5);
           if (nextInLine.length > 0) {
             setQueue((prev) => [...prev, ...nextInLine]);
           }
@@ -568,13 +598,18 @@ export function useAudioEngine(initialTracks = mockTracks) {
       nextIndex = (currentTrackIndex + 1) % tracks.length;
     }
     playTrack(tracks[nextIndex], nextIndex);
-  }, [queue, autoPlayRadio, currentTrack, isShuffle, tracks, currentTrackIndex, playTrack, showToast]);
+  }, [queue, autoPlayRadio, currentTrack, currentTime, isShuffle, tracks, currentTrackIndex, playTrack, showToast, buildSmartMix]);
 
-  // Handle Track Completion with Smart Related Auto-Play
+  // Handle Track Completion with Smart Related Auto-Play & Full-Listen Affinity (+5)
   const handleTrackEnded = useCallback(async () => {
     // Keep AudioContext awake across track transitions when mobile screen is locked
     if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume().catch(() => {});
+    }
+
+    // Record +5 artist affinity for a full listen
+    if (currentTrack) {
+      recordFullListen(currentTrack);
     }
 
     if (sleepTimerSetting === 'end_of_track') {
@@ -594,21 +629,21 @@ export function useAudioEngine(initialTracks = mockTracks) {
     // Next item in Queue
     if (queue.length > 0) {
       const nextQueueTrack = queue[0];
+      songsSinceDiscoveryRef.current = nextQueueTrack.isDiscoveryPick ? 0 : (songsSinceDiscoveryRef.current + 1) % 4;
       setQueue((prev) => prev.slice(1));
       playTrack(nextQueueTrack);
       return;
     }
 
-    // Smart Related Auto-Play (fetches matching related tracks)
+    // Smart Related Auto-Play (fetches vibe-matched ranked tracks)
     if (autoPlayRadio && currentTrack) {
       try {
-        const related = await fetchRelatedTracks(currentTrack.id, currentTrack.title, currentTrack.artist);
-        const unplayed = (related || []).filter((t) => !playedHistoryIdsRef.current.includes(t.id));
-        const candidate = unplayed.length > 0 ? unplayed[0] : (related && related[0]);
+        const ranked = await buildSmartMix(currentTrack);
+        const candidate = ranked[0];
 
         if (candidate) {
-          // Pre-populate queue with remaining related tracks
-          const nextInLine = (unplayed.length > 1 ? unplayed : related).slice(1, 5);
+          songsSinceDiscoveryRef.current = candidate.isDiscoveryPick ? 0 : (songsSinceDiscoveryRef.current + 1) % 4;
+          const nextInLine = ranked.slice(1, 5);
           if (nextInLine.length > 0) {
             setQueue((prev) => [...prev, ...nextInLine]);
           }
@@ -630,7 +665,7 @@ export function useAudioEngine(initialTracks = mockTracks) {
     }
 
     handleNextTrack();
-  }, [sleepTimerSetting, repeatMode, queue, autoPlayRadio, currentTrack, tracks, clearSleepTimer, showToast, playTrack, handleNextTrack]);
+  }, [sleepTimerSetting, repeatMode, queue, autoPlayRadio, currentTrack, tracks, clearSleepTimer, showToast, playTrack, handleNextTrack, buildSmartMix]);
 
   // Audio Event Listeners with Preload & Smart Buffering Tracker
   useEffect(() => {

@@ -22,7 +22,7 @@
     --text-primary: #09090B;
     --text-muted: #71717A;
   }
-  
+
   body {
     background-color: var(--bg-main);
     color: var(--text-primary);
@@ -35,13 +35,16 @@
     width: 5px;
     height: 5px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: rgba(150, 150, 150, 0.2);
     border-radius: 9999px;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(150, 150, 150, 0.4);
   }
@@ -95,19 +98,25 @@
 
 /* Pure-CSS Hardware Accelerated Splash Keyframes (60fps) */
 @keyframes splashFloat {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
+
   50% {
     transform: translate3d(0, -7px, 0) scale(1.02);
   }
 }
 
 @keyframes eqDance {
-  0%, 100% {
+
+  0%,
+  100% {
     height: 4px;
     opacity: 0.5;
   }
+
   50% {
     height: 20px;
     opacity: 1;
@@ -118,6 +127,7 @@
   0% {
     background-position: -200% center;
   }
+
   100% {
     background-position: 200% center;
   }
@@ -128,9 +138,52 @@
   animation: splashFloat 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-.animate-text-shimmer {
-  background-size: 200% auto;
-  animation: textShimmer 4s linear infinite;
+@keyframes eqBar {
+  0%, 100% {
+    transform: scaleY(0.25);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes marqueeScroll {
+  0%, 15% {
+    transform: translateX(0%);
+  }
+  85%, 100% {
+    transform: translateX(-35%);
+  }
+}
+
+.animate-eq-1 {
+  transform-origin: bottom;
+  animation: eqBar 0.75s ease-in-out infinite;
+}
+
+.animate-eq-2 {
+  transform-origin: bottom;
+  animation: eqBar 0.95s ease-in-out infinite 0.2s;
+}
+
+.animate-eq-3 {
+  transform-origin: bottom;
+  animation: eqBar 0.65s ease-in-out infinite 0.4s;
+}
+
+.animate-marquee {
+  display: inline-block;
+  animation: marqueeScroll 9s ease-in-out infinite alternate;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom styled range slider */

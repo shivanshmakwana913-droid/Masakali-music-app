@@ -30,9 +30,8 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Dialog */}
-      <div className={`relative w-full max-w-md border rounded-3xl shadow-2xl p-6 z-10 space-y-5 overflow-hidden transition-colors duration-200 ${
-        isDark ? 'bg-[#0E0E10] border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
-      }`}>
+      <div className={`relative w-full max-w-md border rounded-3xl shadow-2xl p-6 z-10 space-y-5 overflow-hidden transition-colors duration-200 ${isDark ? 'bg-[#0E0E10] border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
+        }`}>
 
         {/* Header */}
         <div className="flex items-start justify-between relative">
@@ -50,18 +49,16 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
 
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-full transition-colors ${
-              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-500 hover:text-black'
-            }`}
+            className={`p-1.5 rounded-full transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-500 hover:text-black'
+              }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Friendly Creator Message */}
-        <div className={`p-3.5 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${
-          isDark ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
-        }`}>
+        <div className={`p-3.5 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${isDark ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+          }`}>
           <p>
             Hey! 👋 I built <strong>Masakali 🕊️</strong> with one pure intention: to free your music from intrusive ads, paywalls, and bloated algorithms.
           </p>
@@ -83,15 +80,14 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
               <button
                 key={amt}
                 onClick={() => setSelectedAmount(amt)}
-                className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                  selectedAmount === amt
-                    ? isDark 
-                      ? 'bg-white text-black border-white shadow-sm' 
-                      : 'bg-black text-white border-black shadow-sm'
-                    : isDark 
-                      ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800' 
-                      : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200'
-                }`}
+                className={`py-2 rounded-xl text-xs font-bold border transition-all ${selectedAmount === amt
+                  ? isDark
+                    ? 'bg-white text-black border-white shadow-sm'
+                    : 'bg-black text-white border-black shadow-sm'
+                  : isDark
+                    ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
+                    : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200'
+                  }`}
               >
                 ₹{amt}
               </button>
@@ -105,9 +101,8 @@ export default function SupportDevModal({ isOpen, onClose, showToast }) {
             isDark ? 'bg-zinc-900/80 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
           }`}>
             <div className="min-w-0 flex-1">
-              <span className={`text-[10px] font-medium block uppercase tracking-wider ${
-                isDark ? 'text-zinc-500' : 'text-zinc-400'
-              }`}>
+              <span className={`text-[10px] font-medium block uppercase tracking-wider ${isDark ? 'text-zinc-500' : 'text-zinc-400'
+                }`}>
                 Official UPI ID (GPay / PhonePe / Paytm / BHIM)
               </span>
               <span className="font-mono text-sm font-bold select-all truncate block mt-0.5">

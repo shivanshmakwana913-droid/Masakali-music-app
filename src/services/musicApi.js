@@ -1,30 +1,42 @@
 // AS Music - Music & Lyrics API Service
-// Connects to local Express backend (/api/search, /api/trending, /api/related, /api/lyrics) with zero-failure fallback to mockTracks
-
-import { mockTracks } from '../data/mockTracks';
+// Connects to Express backend (/api/search, /api/trending, /api/related, /api/lyrics)
 
 // Dynamic API_BASE resolution:
-// Connects to Render backend (https://masakali-music-app.onrender.com/api) when running on Vercel,
-// or http://localhost:5000/api during local development.
-const getApiBase = () => {
-  if (import.meta.env.VITE_API_BASE) {
-    return import.meta.env.VITE_API_BASE.replace(/\/+$/, '');
+// Resolves VITE_API_URL (or VITE_API_BASE), localhost in dev, or Render backend in production, with no trailing slash.
+const getApiRoot = () => {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '').replace(/\/api$/, '');
   }
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:5000/api';
+      return 'http://localhost:5000';
     }
     if (host.includes('onrender.com')) {
-      return '/api';
+      return '';
     }
-    // Remote client deployment (e.g. https://masakalimusicapp.vercel.app/)
-    return 'https://masakali-music-app.onrender.com/api';
+    // Remote client deployment (e.g. Vercel) -> Render backend
+    return 'https://masakali-music-app.onrender.com';
   }
-  return 'http://localhost:5000/api';
+  return 'http://localhost:5000';
 };
 
-export const API_BASE = getApiBase();
+export const API_ROOT = getApiRoot();
+export const API_BASE = API_ROOT ? `${API_ROOT}/api` : '/api';
+
+/**
+ * Mobile-safe fetch with timeout (avoids AbortSignal.timeout incompatibility on older iOS Safari)
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Soft-blurred, dreamy monochrome/frosted Masakali Dove + Musical Note cover art fallback (zero network overhead, 0ms load, zero grey ... boxes)
 export const FALLBACK_COVER_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
@@ -141,9 +153,9 @@ export function handleCoverImageError(e) {
 /**
  * Check if the real streaming backend server is running
  */
-export async function checkBackendStatus() {
+export async function checkBackendStatus(timeoutMs = 25000) {
   try {
-    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetchWithTimeout(`${API_BASE}/health`, {}, timeoutMs);
     if (res.ok) {
       const data = await res.json();
       return { online: true, engine: data.engine };
@@ -155,17 +167,34 @@ export async function checkBackendStatus() {
 }
 
 /**
- * Search real tracks via YouTube Music backend, falling back to mockTracks on error or offline
+ * Silent boot wake-up ping for Render free-tier cold starts (15-20s on mobile data).
+ * Calls onWakingChange(true) if the server takes >1.5s to respond, and clears it once settled.
+ */
+export async function wakeUpBackend(onWakingChange) {
+  let wakingShown = false;
+  const wakingTimer = setTimeout(() => {
+    wakingShown = true;
+    if (typeof onWakingChange === 'function') onWakingChange(true);
+  }, 1500);
+
+  const status = await checkBackendStatus(25000);
+  clearTimeout(wakingTimer);
+  if (wakingShown && typeof onWakingChange === 'function') {
+    onWakingChange(false);
+  }
+  return status;
+}
+
+/**
+ * Search real tracks via YouTube Music backend
  */
 export async function searchMusic(query) {
   if (!query || !query.trim()) {
-    return { tracks: mockTracks, correctedQuery: null, isRealBackend: false };
+    return { tracks: [], correctedQuery: null, isRealBackend: false };
   }
 
   try {
-    const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(10000)
-    });
+    const res = await fetchWithTimeout(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {}, 15000);
 
     if (res.ok) {
       const data = await res.json();
@@ -178,20 +207,10 @@ export async function searchMusic(query) {
       }
     }
   } catch (err) {
-    console.info('Backend search unavailable, searching local catalog:', err.message);
+    console.info('Backend search unavailable:', err.message);
   }
 
-  // Fallback: search local mock catalog
-  const q = query.toLowerCase();
-  const filtered = mockTracks.filter((t) => 
-    t.title.toLowerCase().includes(q) ||
-    t.artist.toLowerCase().includes(q) ||
-    t.album.toLowerCase().includes(q) ||
-    t.genre.toLowerCase().includes(q) ||
-    (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
-  ).map(t => ({ ...t, cover: getHighResThumbnail(t.cover, t.id) }));
-
-  return { tracks: filtered.length > 0 ? filtered : mockTracks.map(t => ({ ...t, cover: getHighResThumbnail(t.cover, t.id) })), correctedQuery: null, isRealBackend: false };
+  return { tracks: [], correctedQuery: null, isRealBackend: false };
 }
 
 /**
@@ -223,7 +242,7 @@ export async function fetchSearchSuggestions(query) {
  */
 export async function fetchTrendingMusic() {
   try {
-    const res = await fetch(`${API_BASE}/trending`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetchWithTimeout(`${API_BASE}/trending`, {}, 20000);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -231,9 +250,9 @@ export async function fetchTrendingMusic() {
       }
     }
   } catch (err) {
-    console.info('Backend trending unavailable, using mock tracks:', err.message);
+    console.info('Backend trending unavailable:', err.message);
   }
-  return mockTracks.map(t => ({ ...t, cover: getHighResThumbnail(t.cover, t.id) }));
+  return [];
 }
 
 /**
@@ -246,7 +265,7 @@ export async function fetchRelatedTracks(videoId, title, artist) {
     if (title) params.append('title', title);
     if (artist) params.append('artist', artist);
 
-    const res = await fetch(`${API_BASE}/related?${params.toString()}`, { signal: AbortSignal.timeout(7000) });
+    const res = await fetchWithTimeout(`${API_BASE}/related?${params.toString()}`, {}, 10000);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.tracks) && data.tracks.length > 0) {
@@ -257,8 +276,32 @@ export async function fetchRelatedTracks(videoId, title, artist) {
     console.info('Backend related tracks unavailable:', err.message);
   }
 
-  // Fallback: pick other mock tracks
-  return mockTracks.filter(t => t.id !== videoId).map(t => ({ ...t, cover: getHighResThumbnail(t.cover, t.id) }));
+  return [];
+}
+
+/**
+ * Fetch vibe-matched Next-Mix candidates from /api/next-mix (with /api/related fallback)
+ */
+export async function fetchNextMix(videoId, title, artist, mood = '') {
+  try {
+    const params = new URLSearchParams();
+    if (videoId) params.append('videoId', videoId);
+    if (title) params.append('title', title);
+    if (artist) params.append('artist', artist);
+    if (mood) params.append('mood', mood);
+
+    const res = await fetch(`${API_BASE}/next-mix?${params.toString()}`, { signal: AbortSignal.timeout(7000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.tracks) && data.tracks.length > 0) {
+        return data.tracks.map(t => ({ ...t, cover: getHighResThumbnail(t.cover, t.id) }));
+      }
+    }
+  } catch (err) {
+    console.info('Backend next-mix unavailable, falling back to related:', err.message);
+  }
+
+  return fetchRelatedTracks(videoId, title, artist);
 }
 
 // Client-side in-memory cache for instant 0ms lyric lookups

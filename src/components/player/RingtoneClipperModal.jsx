@@ -4,6 +4,7 @@ import {
   Sparkles, Music, Waves, Sliders, Check, Volume2 
 } from 'lucide-react';
 import { renderClippedAudio } from '../../utils/audioClipper';
+import { recordLikeOrRingtone } from '../../utils/nextSongAlgo';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function RingtoneClipperModal({
@@ -102,6 +103,7 @@ export default function RingtoneClipperModal({
       URL.revokeObjectURL(url);
 
       showToast(`Saved "${filename}" (Ready for Ringtone/Status)`);
+      recordLikeOrRingtone(track);
       onClose();
     } catch (err) {
       console.error('Ringtone render error:', err);

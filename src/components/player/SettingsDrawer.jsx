@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Moon, Sun, Check, User, Video, Smartphone, 
   Heart, RotateCcw, ExternalLink, ShieldCheck, Sparkles, 
-  LogOut, Edit3, Save, ChevronRight, Github, AlertTriangle
+  LogOut, Edit3, Save, ChevronRight, Github, AlertTriangle,
+  Share2, BarChart2, Download
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { clearOfflineDatabase } from '../../utils/offlineStorage';
@@ -14,6 +15,10 @@ export default function SettingsDrawer({
   isOpen,
   onClose,
   onOpenSupport,
+  onShareApp,
+  onOpenStats,
+  onOpenDownload,
+  isInstalled = false,
   showToast
 }) {
   const { theme, setTheme, isDark } = useTheme();
@@ -473,8 +478,95 @@ export default function SettingsDrawer({
             </div>
           </section>
 
-          {/* 5. SUPPORT DEVELOPER */}
+          {/* 5. QUICK ACTIONS (Install, Share, Stats, Support) */}
           <section className="space-y-2">
+            {!isInstalled && onOpenDownload && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenDownload();
+                }}
+                className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all group ${
+                  isDark
+                    ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-white'
+                    : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 text-zinc-950'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
+                    isDark ? 'bg-black border-zinc-700 text-white' : 'bg-white border-zinc-200 text-black'
+                  }`}>
+                    <Download className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold tracking-tight">Install Masakali App</div>
+                    <p className={`text-[10px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      Add to home screen for offline & native feel
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+
+            {onOpenStats && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenStats();
+                }}
+                className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all group ${
+                  isDark
+                    ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-white'
+                    : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 text-zinc-950'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
+                    isDark ? 'bg-black border-zinc-700 text-white' : 'bg-white border-zinc-200 text-black'
+                  }`}>
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold tracking-tight">Listening Stats & Wrapped</div>
+                    <p className={`text-[10px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      Top artists, tracks & listening time
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+
+            {onShareApp && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onShareApp();
+                }}
+                className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all group ${
+                  isDark
+                    ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-white'
+                    : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 text-zinc-950'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${
+                    isDark ? 'bg-black border-zinc-700 text-white' : 'bg-white border-zinc-200 text-black'
+                  }`}>
+                    <Share2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold tracking-tight">Share Masakali</div>
+                    <p className={`text-[10px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      Invite friends to listen ad-free
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+
             <button
               onClick={() => {
                 if (onOpenSupport) onOpenSupport();

@@ -1,8 +1,7 @@
-// Masakali Lightweight Service Worker
-const CACHE_NAME = 'masakali-v1';
+// Masakali Lightweight Service Worker (Network-First for HTML & JS/CSS)
+const CACHE_VERSION = 'masakali-v2-20261125';
+const CACHE_NAME = CACHE_VERSION;
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/logo.png',
   '/manifest.json'
 ];
@@ -28,39 +27,68 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let network handle API requests & audio streams dynamically (preserve Range requests & mobile background streaming)
+  const { request } = event;
+
+  // Only handle GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(request.url);
+
+  // Let network handle API requests, cross-origin requests & audio streams dynamically
   if (
-    event.request.url.includes('/api/') ||
-    event.request.headers.get('range') ||
-    event.request.destination === 'audio' ||
-    event.request.url.endsWith('.mp3')
+    url.origin !== self.location.origin ||
+    url.pathname.includes('/api/') ||
+    request.headers.get('range') ||
+    request.destination === 'audio' ||
+    url.pathname.endsWith('.mp3')
   ) {
     return;
   }
 
+  const isDocument = request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html');
+  const isCodeAsset = url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.mjs');
+
+  // Network-First strategy for index.html and JS/CSS assets so mobile always gets the latest build
+  if (isDocument || isCodeAsset) {
+    event.respondWith(
+      fetch(isDocument ? new Request(request, { cache: 'no-store' }) : request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            if (isDocument) return caches.match('/index.html');
+            return undefined;
+          });
+        })
+    );
+    return;
+  }
+
+  // Cache-First with network fallback for static images/icons/manifest
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache static image assets (e.g. /logo.png)
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          (event.request.url.endsWith('.png') || event.request.url.endsWith('.svg') || event.request.url.endsWith('.ico'))
-        ) {
+      return fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(request, responseToCache);
           });
         }
         return networkResponse;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+      }).catch(() => undefined);
     })
   );
 });

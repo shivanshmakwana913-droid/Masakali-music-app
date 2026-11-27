@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Download, Check, ListPlus, ListMusic, Plus, 
-  FolderPlus, Moon, Sliders, Share2, Heart, Scissors 
+  FolderPlus, Moon, Sliders, Share2, Heart, Scissors, Mic2, Camera 
 } from 'lucide-react';
 import { getHighResThumbnail, handleCoverImageError } from '../../services/musicApi';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,6 +15,7 @@ export default function TrackActionSheet({
   onToggleLike,
   onOpenStudio,
   onOpenClipper,
+  onOpenLyricCard,
   onShareApp,
   onOpenSupport
 }) {
@@ -56,8 +57,8 @@ export default function TrackActionSheet({
       const updated = customPlaylists.map((pl) => {
         if (pl.id !== playlistId) return pl;
         const exists = pl.trackIds?.includes(track.id);
-        const newIds = exists 
-          ? pl.trackIds.filter(id => id !== track.id) 
+        const newIds = exists
+          ? pl.trackIds.filter(id => id !== track.id)
           : [...(pl.trackIds || []), track.id];
         return { ...pl, trackIds: newIds };
       });
@@ -65,7 +66,7 @@ export default function TrackActionSheet({
       setCustomPlaylists(updated);
       localStorage.setItem('as_music_custom_playlists', JSON.stringify(updated));
       engine.showToast(`Updated "${customPlaylists.find(p => p.id === playlistId)?.title}"`);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Create New Custom Playlist
@@ -83,7 +84,7 @@ export default function TrackActionSheet({
     setCustomPlaylists(updated);
     try {
       localStorage.setItem('as_music_custom_playlists', JSON.stringify(updated));
-    } catch (e) {}
+    } catch (e) { }
     setNewPlaylistName('');
     engine.showToast(`Created "${newPl.title}" and added song`);
   };
@@ -118,27 +119,24 @@ export default function TrackActionSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      
+
       {/* Backdrop tap to dismiss */}
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Action Sheet Container */}
-      <div className={`relative w-full sm:max-w-md border rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 z-10 space-y-4 max-h-[85vh] overflow-y-auto transition-colors ${
-        isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
-      }`}>
-        
-        {/* Top Header with Track Preview */}
-        <div className={`flex items-center justify-between pb-3 border-b ${
-          isDark ? 'border-zinc-800' : 'border-zinc-200'
+      <div className={`relative w-full sm:max-w-md border rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 z-10 space-y-4 max-h-[85vh] overflow-y-auto transition-colors ${isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-950'
         }`}>
+
+        {/* Top Header with Track Preview */}
+        <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'
+          }`}>
           <div className="flex items-center gap-3 min-w-0 pr-3">
-            <img 
-              src={getHighResThumbnail(track.cover, track.id)} 
-              alt={track.title} 
+            <img
+              src={getHighResThumbnail(track.cover, track.id)}
+              alt={track.title}
               onError={handleCoverImageError}
-              className={`w-12 h-12 rounded-xl object-cover shrink-0 border ${
-                isDark ? 'border-zinc-800' : 'border-zinc-200'
-              }`}
+              className={`w-12 h-12 rounded-xl object-cover shrink-0 border ${isDark ? 'border-zinc-800' : 'border-zinc-200'
+                }`}
             />
             <div className="min-w-0">
               <h3 className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-zinc-950'}`}>{track.title}</h3>
@@ -146,11 +144,10 @@ export default function TrackActionSheet({
             </div>
           </div>
 
-          <button 
+          <button
             onClick={onClose}
-            className={`p-2 rounded-full transition-colors ${
-              isDark ? 'hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
-            }`}
+            className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600 hover:text-black'
+              }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -159,16 +156,15 @@ export default function TrackActionSheet({
         {/* Options List */}
         {!showPlaylistPicker ? (
           <div className="space-y-1">
-            
+
             {/* 1. Like Song */}
             <button
               onClick={() => {
                 onToggleLike(track.id);
                 engine.showToast(isLiked ? 'Removed from Liked Songs' : 'Added to Liked Songs');
               }}
-              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <Heart className={`w-5 h-5 ${isLiked ? (isDark ? 'fill-white text-white' : 'fill-black text-black') : 'text-zinc-400'}`} />
               <span>{isLiked ? 'Liked (In Your Library)' : 'Add to Liked Songs'}</span>
@@ -183,9 +179,8 @@ export default function TrackActionSheet({
                   await engine.saveTrackOffline(track);
                 }
               }}
-              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <div className="flex items-center gap-3.5">
                 {isOffline ? (
@@ -196,9 +191,8 @@ export default function TrackActionSheet({
                 <span>{isOffline ? 'Saved for Offline Playback' : 'Download Song Offline'}</span>
               </div>
               {isOffline && (
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-800'
-                }`}>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-800'
+                  }`}>
                   READY
                 </span>
               )}
@@ -207,9 +201,8 @@ export default function TrackActionSheet({
             {/* 3. Add to Playlist */}
             <button
               onClick={() => setShowPlaylistPicker(true)}
-              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <div className="flex items-center gap-3.5">
                 <FolderPlus className="w-5 h-5 text-zinc-400" />
@@ -224,9 +217,8 @@ export default function TrackActionSheet({
                 engine.playNextInQueue(track);
                 onClose();
               }}
-              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <ListPlus className="w-5 h-5 text-zinc-400" />
               <span>Play Next</span>
@@ -238,9 +230,8 @@ export default function TrackActionSheet({
                 engine.addToQueue(track);
                 onClose();
               }}
-              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <ListMusic className="w-5 h-5 text-zinc-400" />
               <span>Add to Queue</span>
@@ -253,19 +244,56 @@ export default function TrackActionSheet({
                   onClose();
                   onOpenClipper(track);
                 }}
-                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-                }`}
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                  }`}
               >
                 <Scissors className="w-5 h-5 text-zinc-400" />
                 <span>Cut Ringtone / 30s Status Clip</span>
               </button>
             )}
 
+            {/* 6b. Karaoke Vocal Remover */}
+            <button
+              onClick={() => {
+                engine.toggleKaraoke();
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <Mic2 className="w-5 h-5 text-zinc-400" />
+                <span>Karaoke Vocal Remover</span>
+              </div>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                engine.isKaraokeMode
+                  ? isDark ? 'bg-white text-black' : 'bg-black text-white'
+                  : isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-600'
+              }`}>
+                {engine.isKaraokeMode ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
+            {/* 6c. Lyric Card Generator */}
+            {onOpenLyricCard && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenLyricCard(0);
+                }}
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
+                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
+              >
+                <Camera className="w-5 h-5 text-zinc-400" />
+                <span>Create Lyric Story Card</span>
+              </button>
+            )}
+
             {/* 7. Sleep Timer Quick Options */}
-            <div className={`py-2 px-3 space-y-2 border-t border-b ${
-              isDark ? 'border-zinc-800' : 'border-zinc-200'
-            }`}>
+            <div className={`py-2 px-3 space-y-2 border-t border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'
+              }`}>
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
                 <Moon className="w-4 h-4" />
                 <span>Sleep Timer:</span>
@@ -283,11 +311,10 @@ export default function TrackActionSheet({
                       engine.setSleepTimer(mins);
                       onClose();
                     }}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${
-                      engine.sleepTimerSetting === mins
-                        ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
-                        : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
-                    }`}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${engine.sleepTimerSetting === mins
+                      ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                      : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
+                      }`}
                   >
                     {mins}m
                   </button>
@@ -297,11 +324,10 @@ export default function TrackActionSheet({
                     engine.setSleepTimer('end_of_track');
                     onClose();
                   }}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${
-                    engine.sleepTimerSetting === 'end_of_track'
-                      ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
-                      : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
-                  }`}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${engine.sleepTimerSetting === 'end_of_track'
+                    ? isDark ? 'bg-white text-black border-white font-bold' : 'bg-black text-white border-black font-bold'
+                    : isDark ? 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white' : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:text-black'
+                    }`}
                 >
                   End of Track
                 </button>
@@ -311,9 +337,8 @@ export default function TrackActionSheet({
                       engine.clearSleepTimer();
                       engine.showToast('Sleep timer turned off');
                     }}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border ${
-                      isDark ? 'bg-rose-950/40 text-rose-300 border-rose-900' : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border ${isDark ? 'bg-rose-950/40 text-rose-300 border-rose-900' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
                   >
                     Off
                   </button>
@@ -328,9 +353,8 @@ export default function TrackActionSheet({
                   onClose();
                   onOpenStudio();
                 }}
-                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-                }`}
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                  }`}
               >
                 <Sliders className="w-5 h-5 text-zinc-400" />
                 <span>Audio Studio (10-Band EQ & 8D)</span>
@@ -340,9 +364,8 @@ export default function TrackActionSheet({
             {/* 9. Share Song */}
             <button
               onClick={handleShare}
-              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-              }`}
+              className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                }`}
             >
               <Share2 className="w-5 h-5 text-zinc-400" />
               <span>Share Song</span>
@@ -355,9 +378,8 @@ export default function TrackActionSheet({
                   onClose();
                   onShareApp();
                 }}
-                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-                }`}
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                  }`}
               >
                 <Share2 className="w-5 h-5 text-zinc-400" />
                 <span>Share Masakali App</span>
@@ -371,9 +393,8 @@ export default function TrackActionSheet({
                   onClose();
                   onOpenSupport();
                 }}
-                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                  isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
-                }`}
+                className={`w-full flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${isDark ? 'hover:bg-zinc-900 text-zinc-200' : 'hover:bg-zinc-100 text-zinc-800'
+                  }`}
               >
                 <Heart className="w-5 h-5 text-zinc-400" />
                 <span>Support Masakali (UPI)</span>
@@ -385,7 +406,7 @@ export default function TrackActionSheet({
           /* Sub-View: Add to Playlist Picker */
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-1">
-              <button 
+              <button
                 onClick={() => setShowPlaylistPicker(false)}
                 className={`text-xs font-semibold hover:underline ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
               >
@@ -401,17 +422,15 @@ export default function TrackActionSheet({
                 placeholder="New playlist name..."
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
-                className={`flex-1 rounded-xl px-3 py-2 text-xs border focus:outline-none transition-colors ${
-                  isDark 
-                    ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-zinc-600' 
-                    : 'bg-zinc-100 border-zinc-200 text-black placeholder-zinc-400 focus:border-zinc-400'
-                }`}
+                className={`flex-1 rounded-xl px-3 py-2 text-xs border focus:outline-none transition-colors ${isDark
+                  ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500 focus:border-zinc-600'
+                  : 'bg-zinc-100 border-zinc-200 text-black placeholder-zinc-400 focus:border-zinc-400'
+                  }`}
               />
               <button
                 type="submit"
-                className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1 shadow-sm transition-transform hover:scale-105 ${
-                  isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
-                }`}
+                className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1 shadow-sm transition-transform hover:scale-105 ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-black text-white hover:bg-zinc-800'
+                  }`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create</span>
@@ -426,11 +445,10 @@ export default function TrackActionSheet({
                   <button
                     key={pl.id}
                     onClick={() => toggleTrackInPlaylist(pl.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors ${
-                      inPlaylist
-                        ? isDark ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300 text-black'
-                        : isDark ? 'border-zinc-800/60 hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-600 hover:text-black'
-                    }`}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors ${inPlaylist
+                      ? isDark ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300 text-black'
+                      : isDark ? 'border-zinc-800/60 hover:bg-zinc-900 text-zinc-400 hover:text-white' : 'border-zinc-200 hover:bg-zinc-100 text-zinc-600 hover:text-black'
+                      }`}
                   >
                     <span>{pl.title} ({pl.trackIds?.length || 0})</span>
                     {inPlaylist ? (
