@@ -103,8 +103,13 @@ export default function PlayerApp() {
   const [isLyricCardOpen, setIsLyricCardOpen] = useState(false);
   const [lyricCardInitialIndex, setLyricCardInitialIndex] = useState(0);
 
-  // Home Screen Filters & Data
-  const [homeFilter, setHomeFilter] = useState('All'); // 'All' | 'Chill' | 'Bollywood' | 'Lo-Fi' | 'Party'
+  // Home Screen Spotlight, Mood Pills & Data
+  const [activeMood, setActiveMood] = useState('trending');
+  const [moodTracks, setMoodTracks] = useState([]);
+  const [isLoadingMood, setIsLoadingMood] = useState(false);
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const spotlightTouchStartX = useRef(null);
+  const [homeFilter, setHomeFilter] = useState('All');
   const [trendingTracks, setTrendingTracks] = useState([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState([]);
 
@@ -417,6 +422,49 @@ export default function PlayerApp() {
     }
   };
 
+  // Tactile Mood Chips configuration (refreshes feed + applies matching DSP preset)
+  const MOOD_CHIPS = [
+    { id: 'trending', label: '🔥 Trending', query: null, preset: 'Flat' },
+    { id: 'lofi', label: '🌙 Late Night Lo-Fi', query: 'late night lofi chill hindi', preset: 'Slowed' },
+    { id: 'romantic', label: '❤️ Romantic', query: 'romantic bollywood hits', preset: 'Vocal' },
+    { id: '8d', label: '🎧 8D Spatial', query: '8d spatial audio songs', preset: '8D' },
+    { id: 'bass', label: '⚡ Bass Boost', query: 'bass boosted party hits', preset: 'Bass Boost' }
+  ];
+
+  const handleMoodChipClick = async (chip) => {
+    setActiveMood(chip.id);
+
+    // Apply matching Audio Studio preset cleanly
+    if (chip.preset === 'Slowed') {
+      if (!engine.isSlowedReverb) engine.toggleSlowedReverb();
+      if (engine.is8DActive) engine.toggle8D();
+      engine.applyPreset('Flat');
+    } else if (chip.preset === '8D') {
+      if (!engine.is8DActive) engine.toggle8D();
+      if (engine.isSlowedReverb) engine.toggleSlowedReverb();
+      engine.applyPreset('Flat');
+    } else {
+      if (engine.isSlowedReverb) engine.toggleSlowedReverb();
+      if (engine.is8DActive) engine.toggle8D();
+      engine.applyPreset(chip.preset);
+    }
+
+    if (!chip.query) {
+      setMoodTracks([]);
+      setIsLoadingMood(false);
+      return;
+    }
+
+    setIsLoadingMood(true);
+    try {
+      const res = await searchMusic(chip.query);
+      if (res && Array.isArray(res.tracks)) {
+        setMoodTracks(res.tracks);
+      }
+    } catch (_) {}
+    setIsLoadingMood(false);
+  };
+
   // Handle Quick Playlist / Mood click - dynamically fetches real matching songs & queues them
   const handlePlaylistClick = async (playlist) => {
     // 1. Configure matching Audio Studio DSP Preset
@@ -708,252 +756,244 @@ export default function PlayerApp() {
           </div>
 
           {/* ========================================================= */}
-          {/* 1. DEDICATED HOME VIEW (Airy, Spacious 3-Section Layout) */}
+          {/* 1. DEDICATED HOME VIEW (Captivating Mobile-First Layout) */}
           {/* ========================================================= */}
-          {currentTab === 'home' && (
-            <div className="space-y-8 animate-in fade-in duration-300">
+          {currentTab === 'home' && (() => {
+            const spotlightPicks = (uniqueTrendingTracks.length > 0 ? uniqueTrendingTracks : uniqueRecentlyPlayed).slice(0, 4);
+            const safeSpotlightIdx = spotlightPicks.length > 0 ? spotlightIndex % spotlightPicks.length : 0;
+            const spotTrack = spotlightPicks[safeSpotlightIdx] || null;
+            const feedTracks = activeMood === 'trending'
+              ? uniqueTrendingTracks
+              : deduplicateTracks(moodTracks);
+            const isFeedLoading = activeMood === 'trending'
+              ? (isLoadingTrending && uniqueTrendingTracks.length === 0)
+              : isLoadingMood;
 
-              {/* 1. Your Artists (Clean Horizontal Circular Avatars) */}
-              {uniqueTrendingTracks.length > 0 && (
-                <section className="space-y-3.5">
-                  <h3 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
-                    Your Artists
-                  </h3>
+            return (
+              <div className="space-y-6 animate-in fade-in duration-300">
 
-                  <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
-                    {Array.from(
-                      new Map(
-                        uniqueTrendingTracks
-                          .filter((t) => t.artist)
-                          .map((t) => [t.artist.split(',')[0].trim(), t])
-                      ).entries()
-                    )
-                      .slice(0, 10)
-                      .map(([artistName, track]) => {
-                        const isArtistPlaying =
-                          isPlaying &&
-                          currentTrack?.artist &&
-                          currentTrack.artist.toLowerCase().includes(artistName.toLowerCase());
-                        return (
-                          <button
-                            key={`artist-${artistName}`}
-                            onClick={() => {
-                              setSearchQuery(artistName);
-                              setCurrentTab('search');
-                            }}
-                            className="group shrink-0 flex flex-col items-center gap-2 w-20 sm:w-24 snap-start text-center focus:outline-none"
-                          >
-                            <div
-                              className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden transition-all duration-300 shadow-md ${
-                                isArtistPlaying
-                                  ? isDark
-                                    ? 'ring-2 ring-white ring-offset-2 ring-offset-black'
-                                    : 'ring-2 ring-black ring-offset-2 ring-offset-white'
-                                  : isDark
-                                    ? 'ring-1 ring-white/10 group-hover:ring-white/30'
-                                    : 'ring-1 ring-black/10 group-hover:ring-black/30'
-                              }`}
-                            >
-                              <img
-                                src={getHighResThumbnail(track.cover, track.id)}
-                                alt={artistName}
-                                onError={handleCoverImageError}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                loading="lazy"
-                              />
-                              {isArtistPlaying && (
-                                <div className="absolute inset-0 bg-black/35 flex items-end justify-center gap-1 pb-3">
-                                  <span className="w-1 h-3 bg-white rounded-full animate-eq-1" />
-                                  <span className="w-1 h-4 bg-white rounded-full animate-eq-2" />
-                                  <span className="w-1 h-2.5 bg-white rounded-full animate-eq-3" />
-                                </div>
-                              )}
-                            </div>
-                            <span className={`text-xs font-semibold truncate w-full transition-colors ${
-                              isDark ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-700 group-hover:text-black'
-                            }`}>
-                              {artistName}
-                            </span>
-                          </button>
+                {/* 1. Interactive "Vibe Spotlight" Hero Card */}
+                {isLoadingTrending && !spotTrack ? (
+                  <div className={`w-full aspect-[16/10] rounded-3xl animate-pulse ${
+                    isDark ? 'bg-zinc-900' : 'bg-zinc-200'
+                  }`} />
+                ) : spotTrack && (
+                  <section
+                    onTouchStart={(e) => {
+                      spotlightTouchStartX.current = e.touches?.[0]?.clientX ?? null;
+                    }}
+                    onTouchEnd={(e) => {
+                      if (spotlightTouchStartX.current === null || spotlightPicks.length <= 1) return;
+                      const endX = e.changedTouches?.[0]?.clientX ?? spotlightTouchStartX.current;
+                      const diff = spotlightTouchStartX.current - endX;
+                      if (Math.abs(diff) > 36) {
+                        setSpotlightIndex((prev) =>
+                          diff > 0
+                            ? (prev + 1) % spotlightPicks.length
+                            : (prev - 1 + spotlightPicks.length) % spotlightPicks.length
                         );
-                      })}
+                      }
+                      spotlightTouchStartX.current = null;
+                    }}
+                    className="relative w-full aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl border border-white/10 select-none group"
+                  >
+                    <img
+                      src={getHighResThumbnail(spotTrack.cover, spotTrack.id)}
+                      alt={spotTrack.title}
+                      onError={handleCoverImageError}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                    {/* Top Row: Live Soundwave Visualizer + Swipe Dots */}
+                    <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md border border-white/15">
+                        <div className="flex items-end gap-[2.5px] h-3">
+                          <span className="w-[2.5px] h-2.5 bg-white rounded-full animate-eq-1" />
+                          <span className="w-[2.5px] h-3 bg-white rounded-full animate-eq-2" />
+                          <span className="w-[2.5px] h-2 bg-white rounded-full animate-eq-3" />
+                        </div>
+                        <span className="text-[10px] font-bold tracking-wider uppercase text-white/90">
+                          Spotlight
+                        </span>
+                      </div>
+
+                      {spotlightPicks.length > 1 && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md">
+                          {spotlightPicks.map((_, i) => (
+                            <button
+                              key={`spot-dot-${i}`}
+                              onClick={() => setSpotlightIndex(i)}
+                              aria-label={`Spotlight ${i + 1}`}
+                              className={`h-1.5 rounded-full transition-all ${
+                                i === safeSpotlightIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/45 hover:bg-white/75'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Content: Track Info + 1-Tap Instant Vibe Button */}
+                    <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">
+                          {spotTrack.title}
+                        </h2>
+                        <p className="text-xs sm:text-sm text-white/75 font-medium truncate mt-0.5">
+                          {spotTrack.artist}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          playTrack(spotTrack);
+                          if (spotlightPicks.length > 1 && engine.setQueue) {
+                            engine.setQueue(spotlightPicks.filter((t) => t.id !== spotTrack.id));
+                          }
+                        }}
+                        className="shrink-0 px-4 py-2.5 rounded-full bg-white text-black font-bold text-xs flex items-center gap-1.5 shadow-xl hover:scale-105 active:scale-95 transition-transform"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-black" />
+                        <span>Play Instant Vibe</span>
+                      </button>
+                    </div>
+                  </section>
+                )}
+
+                {/* 2. Tactile Mood Pills (Clean Horizontal Strip) */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {MOOD_CHIPS.map((chip) => {
+                    const isSelected = activeMood === chip.id;
+                    return (
+                      <button
+                        key={chip.id}
+                        onClick={() => handleMoodChipClick(chip)}
+                        className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all active:scale-95 border ${
+                          isSelected
+                            ? isDark
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-black text-white border-black shadow-md'
+                            : isDark
+                              ? 'bg-zinc-900/70 text-zinc-300 border-white/10 hover:bg-zinc-800 hover:text-white'
+                              : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:text-black'
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 3. Clean "Up Next / Fresh Picks" Editorial List */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`text-base sm:text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                      {activeMood === 'trending'
+                        ? 'Fresh Picks'
+                        : `${MOOD_CHIPS.find((c) => c.id === activeMood)?.label.replace(/^[^\w]+/, '').trim()} • Up Next`}
+                    </h3>
                   </div>
-                </section>
-              )}
 
-              {/* 2. Made For You (2-Column Clean Song Cards) */}
-              {(isLoadingTrending || uniqueRecentlyPlayed.length > 0 || uniqueTrendingTracks.length > 0) && (
-                <section className="space-y-3.5">
-                  <h3 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
-                    Made For You
-                  </h3>
-
-                  {isLoadingTrending && uniqueRecentlyPlayed.length === 0 && uniqueTrendingTracks.length === 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={`skeleton-card-${i}`}
-                          className={`p-2.5 rounded-2xl border space-y-2.5 animate-pulse ${
-                            isDark ? 'bg-zinc-900/40 border-white/5' : 'bg-zinc-100/70 border-zinc-200/70'
-                          }`}
-                        >
-                          <div className={`aspect-square w-full rounded-xl ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                          <div className={`h-3.5 w-3/4 rounded ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                          <div className={`h-3 w-1/2 rounded ${isDark ? 'bg-zinc-800/70' : 'bg-zinc-200/70'}`} />
+                  {isFeedLoading ? (
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/60 border-white/5 divide-white/5' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={`skeleton-pick-${i}`} className="flex items-center gap-3.5 px-3.5 py-3 animate-pulse">
+                          <div className={`w-12 h-12 rounded-xl shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                          <div className="flex-1 space-y-2">
+                            <div className={`h-3.5 w-2/3 rounded ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                            <div className={`h-3 w-1/3 rounded ${isDark ? 'bg-zinc-800/70' : 'bg-zinc-200/70'}`} />
+                          </div>
                         </div>
                       ))}
                     </div>
+                  ) : feedTracks.length === 0 ? (
+                    <div className={`rounded-2xl border p-6 text-center space-y-3 ${
+                      isDark ? 'bg-zinc-950/60 border-white/5 text-zinc-400' : 'bg-white border-zinc-200 text-zinc-500'
+                    }`}>
+                      <p className="text-sm">No tracks loaded yet.</p>
+                      <button
+                        onClick={() => {
+                          if (activeMood === 'trending') {
+                            setIsLoadingTrending(true);
+                            fetchTrendingMusic().then((data) => {
+                              if (Array.isArray(data) && data.length > 0) setTrendingTracks(data);
+                              setIsLoadingTrending(false);
+                            });
+                          } else {
+                            const chip = MOOD_CHIPS.find((c) => c.id === activeMood);
+                            if (chip) handleMoodChipClick(chip);
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition-transform active:scale-95 ${
+                          isDark ? 'bg-white text-black' : 'bg-black text-white'
+                        }`}
+                      >
+                        Retry
+                      </button>
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-                      {(uniqueRecentlyPlayed.length > 0 ? uniqueRecentlyPlayed : uniqueTrendingTracks)
-                        .slice(0, 4)
-                        .map((track, idx) => (
+                    <div className={`rounded-2xl border overflow-hidden divide-y ${
+                      isDark ? 'bg-zinc-950/60 border-white/5 divide-white/5' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
+                    }`}>
+                      {feedTracks.slice(0, 15).map((t, idx) => {
+                        const isCurrent = currentTrack?.id === t.id;
+                        return (
                           <div
-                            key={`made-for-you-${track.id}-${idx}`}
-                            onClick={() => {
-                              playTrack(track);
-                              setIsFullScreenOpen(true);
-                            }}
-                            className={`group p-2.5 rounded-2xl border cursor-pointer transition-all duration-300 space-y-2.5 ${
-                              isDark
-                                ? 'bg-zinc-900/50 hover:bg-zinc-900 border-white/5 hover:border-white/15'
-                                : 'bg-white hover:bg-zinc-50 border-zinc-200/80 hover:border-zinc-300 shadow-sm'
+                            key={`fresh-pick-${t.id}-${idx}`}
+                            onClick={() => playTrack(t)}
+                            className={`flex items-center justify-between gap-3 px-3.5 py-3 cursor-pointer transition-colors ${
+                              isCurrent
+                                ? isDark ? 'bg-white/10' : 'bg-zinc-100'
+                                : isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-50'
                             }`}
                           >
-                            <div className="aspect-square w-full rounded-xl overflow-hidden relative shadow-md">
+                            <div className="flex items-center gap-3.5 min-w-0 flex-1">
                               <img
-                                src={getHighResThumbnail(track.cover, track.id)}
-                                alt={track.title}
+                                src={getHighResThumbnail(t.cover, t.id)}
+                                alt={t.title}
                                 onError={handleCoverImageError}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm"
                                 loading="lazy"
                               />
-                              <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-xl ${
-                                  isDark ? 'bg-white text-black' : 'bg-black text-white'
+                              <div className="min-w-0 flex-1">
+                                <h4 className={`text-sm font-bold truncate ${
+                                  isDark ? 'text-white' : 'text-zinc-950'
                                 }`}>
-                                  <Play className={`w-4 h-4 translate-x-0.5 ${isDark ? 'fill-black' : 'fill-white'}`} />
-                                </div>
+                                  {t.title}
+                                </h4>
+                                <p className={`text-xs truncate mt-0.5 ${
+                                  isDark ? 'text-zinc-400' : 'text-zinc-500'
+                                }`}>
+                                  {t.artist}
+                                </p>
                               </div>
                             </div>
-                            <div className="px-0.5">
-                              <h4 className={`text-xs sm:text-sm font-bold truncate ${
-                                isDark ? 'text-white' : 'text-zinc-950'
-                              }`}>
-                                {track.title}
-                              </h4>
-                              <p className={`text-[11px] sm:text-xs truncate mt-0.5 ${
-                                isDark ? 'text-zinc-400' : 'text-zinc-500'
-                              }`}>
-                                {track.artist}
-                              </p>
-                            </div>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActionTrack(t);
+                              }}
+                              className={`p-2 rounded-full shrink-0 transition-colors ${
+                                isDark ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-500 hover:text-black hover:bg-zinc-200/70'
+                              }`}
+                              title="Track Options"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
                           </div>
-                        ))}
+                        );
+                      })}
                     </div>
                   )}
                 </section>
-              )}
 
-              {/* 3. Trending Now (Clean Spacious Rows: Cover, Title, Artist, Single ⋮ Icon) */}
-              <section className="space-y-3.5">
-                <h3 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-zinc-950'}`}>
-                  Trending Now
-                </h3>
-
-                {isLoadingTrending && uniqueTrendingTracks.length === 0 ? (
-                  <div className={`rounded-2xl border overflow-hidden divide-y ${
-                    isDark ? 'bg-zinc-950/60 border-white/5 divide-white/5' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
-                  }`}>
-                    {[0, 1, 2, 3].map((i) => (
-                      <div key={`skeleton-row-${i}`} className="flex items-center gap-3.5 px-3.5 py-3 animate-pulse">
-                        <div className={`w-12 h-12 rounded-xl shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                        <div className="flex-1 space-y-2">
-                          <div className={`h-3.5 w-2/3 rounded ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
-                          <div className={`h-3 w-1/3 rounded ${isDark ? 'bg-zinc-800/70' : 'bg-zinc-200/70'}`} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : uniqueTrendingTracks.length === 0 ? (
-                  <div className={`rounded-2xl border p-6 text-center space-y-3 ${
-                    isDark ? 'bg-zinc-950/60 border-white/5 text-zinc-400' : 'bg-white border-zinc-200 text-zinc-500'
-                  }`}>
-                    <p className="text-sm">Unable to load trending tracks right now.</p>
-                    <button
-                      onClick={() => {
-                        setIsLoadingTrending(true);
-                        fetchTrendingMusic().then((data) => {
-                          if (Array.isArray(data) && data.length > 0) setTrendingTracks(data);
-                          setIsLoadingTrending(false);
-                        });
-                      }}
-                      className={`px-4 py-2 rounded-full text-xs font-bold transition-transform active:scale-95 ${
-                        isDark ? 'bg-white text-black' : 'bg-black text-white'
-                      }`}
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : (
-                  <div className={`rounded-2xl border overflow-hidden divide-y ${
-                    isDark ? 'bg-zinc-950/60 border-white/5 divide-white/5' : 'bg-white border-zinc-200 divide-zinc-100 shadow-sm'
-                  }`}>
-                    {uniqueTrendingTracks.slice(0, 10).map((t, idx) => {
-                      const isCurrent = currentTrack?.id === t.id;
-                      return (
-                        <div
-                          key={`trending-clean-${t.id}-${idx}`}
-                          onClick={() => playTrack(t)}
-                          className={`flex items-center justify-between gap-3 px-3.5 py-3 cursor-pointer transition-colors ${
-                            isCurrent
-                              ? isDark ? 'bg-white/10' : 'bg-zinc-100'
-                              : isDark ? 'hover:bg-white/5' : 'hover:bg-zinc-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <img
-                              src={getHighResThumbnail(t.cover, t.id)}
-                              alt={t.title}
-                              onError={handleCoverImageError}
-                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm"
-                              loading="lazy"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className={`text-sm font-bold truncate ${
-                                isDark ? 'text-white' : 'text-zinc-950'
-                              }`}>
-                                {t.title}
-                              </h4>
-                              <p className={`text-xs truncate mt-0.5 ${
-                                isDark ? 'text-zinc-400' : 'text-zinc-500'
-                              }`}>
-                                {t.artist}
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionTrack(t);
-                            }}
-                            className={`p-2 rounded-full shrink-0 transition-colors ${
-                              isDark ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-zinc-500 hover:text-black hover:bg-zinc-200/70'
-                            }`}
-                            title="Track Options"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* ========================================================= */}
           {/* 2. DEDICATED SEARCH VIEW                                 */}
