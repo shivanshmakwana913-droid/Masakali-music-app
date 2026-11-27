@@ -10,7 +10,7 @@ export default defineConfig({
     host: true
   },
   build: {
-    target: 'esnext',
+    target: 'es2020',
     minify: 'esbuild',
     rollupOptions: {
       output: {

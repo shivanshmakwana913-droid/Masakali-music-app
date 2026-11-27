@@ -32,6 +32,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
     <title>Masakali 🕊️ • Free Your Music. Fly Without Ads.</title>
+    <script>
+      // Clear any stale Service Workers & CacheStorage before booting Vite module scripts
+      (function () {
+        try {
+          if ('caches' in window) {
+            caches.keys().then(function (keys) {
+              keys.forEach(function (k) { caches.delete(k); });
+            });
+          }
+          if ('serviceWorker' in navigator) {
+            var hadController = !!navigator.serviceWorker.controller;
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              if (regs && regs.length > 0) {
+                Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
+                  if (hadController && !sessionStorage.getItem('masakali_sw_cleared')) {
+                    sessionStorage.setItem('masakali_sw_cleared', '1');
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-black text-white antialiased selection:bg-zinc-800 selection:text-white overflow-x-hidden min-h-screen">
     <div id="root"></div>

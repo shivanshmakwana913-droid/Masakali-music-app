@@ -4,19 +4,11 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
 
-// Register lightweight service worker for PWA installability & network-first updates
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        // Proactively check for updated SW on every mobile boot
-        registration.update().catch(() => {});
-      })
-      .catch((err) => {
-        console.log('SW registration note:', err);
-      });
-  });
+// Ensure no stale Service Worker caches block live updates on mobile/desktop
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister().catch(() => {}));
+  }).catch(() => {});
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
